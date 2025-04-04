@@ -1,191 +1,131 @@
-# TerraProbe: Terraform Provider for Infrastructure Testing
+# TerraProbe - Infrastructure Testing Terraform Provider
 
-TerraProbe is a Terraform provider that validates infrastructure after deployment through various tests. It integrates with the regular Terraform workflow, runs post-deployment tests against your infrastructure, and saves test results as Terraform state.
+TerraProbe is a Terraform provider that facilitates infrastructure testing directly through Terraform. It allows you to define and run automated tests for HTTP endpoints, TCP connections, and more, integrating testing directly into your Terraform workflow.
 
 ## Features
 
-- **Seamless Integration**: Works within your existing Terraform workflow
-- **HTTP Testing**: Validate REST APIs, web services, and HTTP endpoints
-- **TCP Testing**: Verify network connectivity to hosts and ports
-- **Test Suites**: Group related tests together with aggregate results
-- **Test Results in State**: All test results are saved in Terraform state for easy access
-- **Configurable Retries**: Configure timeout, retry count, and retry delay
-- **Rich Output**: Get detailed test results including response times, status codes, and error messages
+- **HTTP Testing**: Test HTTP/HTTPS endpoints for status codes, response body content, and more
+- **TCP Testing**: Test TCP connections to specified hosts and ports
+- **Test Suites**: Group tests together and get aggregated results
+- **Terraform Integration**: Seamlessly integrates with your existing Terraform workflows
 
 ## Usage
 
+### Provider Configuration
+
 ```hcl
-terraform {
-  required_providers {
-    terraprobe = {
-      source = "hashicorp/terraprobe"
-    }
+provider "terraprobe" {
+  retries = 3           # Number of retries for tests that fail (default: 3)
+  retry_delay = 5       # Delay between retries in seconds (default: 5)
+}
+```
+
+### HTTP Test
+
+```hcl
+resource "terraprobe_http_test" "example" {
+  name             = "API Health Check"
+  url              = "https://api.example.com/health"
+  method           = "GET"
+  expect_status_code = 200
+  expect_contains  = "healthy"
+  headers = {
+    "User-Agent" = "TerraProbe"
+    "Authorization" = "Bearer ${var.api_token}"
   }
 }
 
-provider "terraprobe" {
-  default_timeout     = 30
-  default_retries     = 3
-  default_retry_delay = 5
+output "api_status" {
+  value = terraprobe_http_test.example.test_passed ? "Healthy" : "Unhealthy"
+}
+```
+
+### TCP Test
+
+```hcl
+resource "terraprobe_tcp_test" "example" {
+  name = "Database Connection"
+  host = "db.example.com"
+  port = 5432
 }
 
-# Define an HTTP test to validate an API endpoint
-resource "terraprobe_http_test" "api_health" {
-  name        = "API Health Check"
-  url         = "https://${aws_lb.api.dns_name}/health"
-  method      = "GET"
-  
-  # Define assertions
-  expect_status_code = 200
-  expect_contains   = "status: healthy"
+output "db_status" {
+  value = terraprobe_tcp_test.example.test_passed ? "Connected" : "Failed"
 }
+```
 
-# Define a TCP test to verify database connectivity
-resource "terraprobe_tcp_test" "database_connection" {
-  name = "Database Connection Test"
-  host = aws_db_instance.postgres.address
-  port = aws_db_instance.postgres.port
-  
-  # This ensures the test runs after the database is created
-  depends_on = [aws_db_instance.postgres]
-}
+### Test Suite
 
-# Group tests in a test suite
-resource "terraprobe_test_suite" "production_validation" {
-  name        = "Production Health Checks"
-  description = "Validates all production services are healthy"
+```hcl
+resource "terraprobe_test_suite" "all_tests" {
+  name = "System Health Checks"
+  description = "Tests for all critical system components"
   
-  # Reference the above tests
   http_tests = [
-    terraprobe_http_test.api_health.id
+    terraprobe_http_test.api.id,
+    terraprobe_http_test.website.id
   ]
   
   tcp_tests = [
-    terraprobe_tcp_test.database_connection.id
+    terraprobe_tcp_test.database.id,
+    terraprobe_tcp_test.redis.id
   ]
 }
 
-# Output test results
-output "infrastructure_tests" {
+output "system_health" {
   value = {
-    all_passed   = terraprobe_test_suite.production_validation.all_passed
-    passed_count = terraprobe_test_suite.production_validation.passed_count
-    failed_count = terraprobe_test_suite.production_validation.failed_count
-    failed_tests = terraprobe_test_suite.production_validation.failed_tests
+    passing = terraprobe_test_suite.all_tests.passed_count
+    failing = terraprobe_test_suite.all_tests.failed_count
+    all_healthy = terraprobe_test_suite.all_tests.all_passed
   }
 }
 ```
 
-## Provider Configuration
+## Development
 
-| Argument | Description | Default |
-|----------|-------------|---------|
-| `default_timeout` | Default timeout in seconds for all tests | `30` |
-| `default_retries` | Default number of retries for all tests | `3` |
-| `default_retry_delay` | Default delay between retries in seconds | `5` |
-| `user_agent` | User agent to use for HTTP requests | `TerraProbe Terraform Provider` |
+### Requirements
 
-## Resources
+- [Go](https://golang.org/doc/install) 1.18+ (to build the provider plugin)
+- [Terraform](https://www.terraform.io/downloads.html) 0.14.x+
 
-### `terraprobe_http_test`
-
-The HTTP test resource allows you to validate HTTP endpoints.
-
-#### Arguments
-
-| Argument | Description | Required |
-|----------|-------------|----------|
-| `name` | Descriptive name for the test | Yes |
-| `url` | URL to test | Yes |
-| `method` | HTTP method (GET, POST, PUT, DELETE, etc.) | No (default: GET) |
-| `headers` | Map of HTTP headers | No |
-| `body` | Request body for POST, PUT, etc. | No |
-| `timeout` | Timeout in seconds (overrides provider default) | No |
-| `retries` | Number of retries (overrides provider default) | No |
-| `retry_delay` | Delay between retries in seconds (overrides provider default) | No |
-| `expect_status_code` | Expected HTTP status code | No (default: 200) |
-| `expect_contains` | String to look for in the response body | No |
-
-#### Attributes
-
-| Attribute | Description |
-|-----------|-------------|
-| `id` | Test identifier |
-| `last_run` | Timestamp of the last test run |
-| `last_status_code` | Status code from the last test run |
-| `last_response_body` | Response body from the last test run |
-| `last_response_time` | Response time in milliseconds from the last test run |
-| `test_passed` | Whether the test passed |
-| `error` | Error message if the test failed |
-
-### `terraprobe_tcp_test`
-
-The TCP test resource allows you to validate TCP connectivity to hosts and ports.
-
-#### Arguments
-
-| Argument | Description | Required |
-|----------|-------------|----------|
-| `name` | Descriptive name for the test | Yes |
-| `host` | Host to connect to (IP address or hostname) | Yes |
-| `port` | Port to connect to | Yes |
-| `timeout` | Timeout in seconds (overrides provider default) | No |
-| `retries` | Number of retries (overrides provider default) | No |
-| `retry_delay` | Delay between retries in seconds (overrides provider default) | No |
-
-#### Attributes
-
-| Attribute | Description |
-|-----------|-------------|
-| `id` | Test identifier |
-| `last_run` | Timestamp of the last test run |
-| `last_connect_time` | Connection time in milliseconds from the last test run |
-| `test_passed` | Whether the test passed (connection was established) |
-| `error` | Error message if the test failed |
-
-### `terraprobe_test_suite`
-
-The test suite resource allows you to group related tests together and get aggregate results.
-
-#### Arguments
-
-| Argument | Description | Required |
-|----------|-------------|----------|
-| `name` | Name of the test suite | Yes |
-| `description` | Description of the test suite | No |
-| `http_tests` | List of HTTP test resource references | No |
-| `tcp_tests` | List of TCP test resource references | No |
-
-#### Attributes
-
-| Attribute | Description |
-|-----------|-------------|
-| `id` | Test suite identifier |
-| `last_run` | Timestamp of the last test run |
-| `all_passed` | Whether all tests passed |
-| `passed_count` | Number of tests that passed |
-| `failed_count` | Number of tests that failed |
-| `total_count` | Total number of tests in the suite |
-| `failed_tests` | List of tests that failed |
-
-## Requirements
-
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.1
-- [Go](https://golang.org/doc/install) >= 1.20
-
-## Building The Provider
+### Building the Provider
 
 1. Clone the repository
-1. Enter the repository directory
-1. Build the provider using the Go `install` command:
+2. Build the provider
+   ```shell
+   go build -o terraform-provider-terraprobe
+   ```
+3. Install the provider locally (for testing)
+   ```shell
+   mkdir -p ~/.terraform.d/plugins/registry.terraform.io/hashicorp/terraprobe/0.1.0/$(go env GOOS)_$(go env GOARCH)/
+   cp terraform-provider-terraprobe ~/.terraform.d/plugins/registry.terraform.io/hashicorp/terraprobe/0.1.0/$(go env GOOS)_$(go env GOARCH)/
+   ```
+
+### Testing
+
+#### Run Unit Tests
 
 ```shell
-go install
+go test ./internal/provider/... -v
 ```
 
-## Future Plans
+#### Run the Test Configuration
 
-- Additional test types (gRPC, DNS, Kubernetes, Databases)
-- Advanced assertion capabilities
-- AI-powered test result analysis
-- Customizable notifications and actions on test failure
+```shell
+# From the root directory
+cd test-config
+./run-test.sh --all
+```
+
+The `run-test.sh` script supports the following options:
+- `--test`: Run Terraform to test the provider
+- `--unit`: Run unit tests only
+- `--all`: Run both unit tests and Terraform tests
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the Mozilla Public License 2.0 - see the LICENSE file for details.

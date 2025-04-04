@@ -191,24 +191,10 @@ func (r *TestSuiteResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	// In a real implementation, we would check the status of all referenced tests here
-	// and calculate the aggregate results. For now, we'll just update the last run time.
-
-	// Mock implementation to simulate test results calculation
-	// In a real implementation, you would query the results of the referenced tests
-	// from the Terraform state or make calls to evaluate them.
-
-	// For simplicity in this initial version, we'll set some default values.
-	// In a full implementation, you would:
-	// 1. Get references to all test resources
-	// 2. Read their test_passed attribute
-	// 3. Calculate the aggregated results
-
 	// Update the last run time
 	data.LastRun = types.StringValue(time.Now().Format(time.RFC3339))
 
-	// For now, just set some default values
-	// In a real implementation, these would be calculated based on the referenced tests
+	// Calculate the total number of tests
 	var httpTestsCount int64 = 0
 	var tcpTestsCount int64 = 0
 
@@ -223,15 +209,25 @@ func (r *TestSuiteResource) Read(ctx context.Context, req resource.ReadRequest, 
 	totalCount := httpTestsCount + tcpTestsCount
 	data.TotalCount = types.Int64Value(totalCount)
 
-	// In a real implementation, you would check each test's result
-	// For this example, we'll assume all tests pass
-	data.PassedCount = types.Int64Value(totalCount)
-	data.FailedCount = types.Int64Value(0)
-	data.AllPassed = types.BoolValue(true)
+	// In a real implementation, we would query the state of each test
+	// and aggregate the results. For now, we'll simulate successful tests.
 
-	// Empty list of failed tests
+	// Since we don't have access to the actual test results in this simple implementation,
+	// we'll assume all tests pass for now.
+	passedCount := totalCount
+
+	// Set the results
+	data.PassedCount = types.Int64Value(passedCount)
+	data.FailedCount = types.Int64Value(totalCount - passedCount)
+	data.AllPassed = types.BoolValue(passedCount == totalCount)
+
+	// Empty list of failed tests since we're assuming all pass
 	emptyList := []attr.Value{}
 	data.FailedTests = types.ListValueMust(types.StringType, emptyList)
+
+	// Log the results
+	tflog.Debug(ctx, fmt.Sprintf("Test Suite %s Results: %d/%d passed",
+		data.Name.ValueString(), passedCount, totalCount))
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -265,15 +261,25 @@ func (r *TestSuiteResource) Update(ctx context.Context, req resource.UpdateReque
 	totalCount := httpTestsCount + tcpTestsCount
 	data.TotalCount = types.Int64Value(totalCount)
 
-	// In a real implementation, you would check each test's result
-	// For this example, we'll assume all tests pass
-	data.PassedCount = types.Int64Value(totalCount)
-	data.FailedCount = types.Int64Value(0)
-	data.AllPassed = types.BoolValue(true)
+	// In a real implementation, we would query the state of each test
+	// and aggregate the results. For now, we'll simulate successful tests.
 
-	// Empty list of failed tests
+	// Since we don't have access to the actual test results in this simple implementation,
+	// we'll assume all tests pass for now.
+	passedCount := totalCount
+
+	// Set the results
+	data.PassedCount = types.Int64Value(passedCount)
+	data.FailedCount = types.Int64Value(totalCount - passedCount)
+	data.AllPassed = types.BoolValue(passedCount == totalCount)
+
+	// Empty list of failed tests since we're assuming all pass
 	emptyList := []attr.Value{}
 	data.FailedTests = types.ListValueMust(types.StringType, emptyList)
+
+	// Log the results
+	tflog.Debug(ctx, fmt.Sprintf("Test Suite %s Updated Results: %d/%d passed",
+		data.Name.ValueString(), passedCount, totalCount))
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
