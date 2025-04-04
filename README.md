@@ -10,6 +10,16 @@ TerraProbe is a Terraform provider that facilitates infrastructure testing direc
 - **Test Suites**: Group tests together and get aggregated results
 - **Terraform Integration**: Seamlessly integrates with your existing Terraform workflows
 
+## Resources
+
+The TerraProbe provider includes the following resources:
+
+- `terraprobe_http_test` - Test HTTP endpoints
+- `terraprobe_tcp_test` - Test TCP connectivity
+- `terraprobe_dns_test` - Test DNS resolution
+- `terraprobe_db_test` - Test database connectivity
+- `terraprobe_test_suite` - Group multiple tests together
+
 ## Usage
 
 ### Provider Configuration
@@ -105,6 +115,42 @@ output "system_health" {
   }
 }
 ```
+
+### Database Test Resource
+
+The database test resource (`terraprobe_db_test`) allows you to test connectivity and query execution against various database engines.
+
+```hcl
+resource "terraprobe_db_test" "postgres_test" {
+  name     = "PostgreSQL Database Test"
+  type     = "postgres"  # Supported types: postgres, mysql
+  host     = "db.example.com"
+  port     = 5432
+  username = "dbuser"
+  password = "dbpassword"
+  database = "mydb"
+  query    = "SELECT 1"  # Optional query to execute
+  ssl_mode = "disable"   # For PostgreSQL: disable, require, verify-ca, verify-full
+  
+  # Connection pool settings (optional)
+  max_lifetime = 1800    # Maximum connection lifetime in seconds
+  max_idle_conn = 10     # Maximum idle connections in the pool
+  max_open_conn = 100    # Maximum open connections
+  
+  # Retry settings (optional)
+  timeout    = 10
+  retries    = 3
+  retry_delay = 5
+}
+```
+
+The resource provides the following attributes:
+
+- `test_passed`: Boolean indicating if the test passed
+- `last_run`: Timestamp of the last test run
+- `last_query_time`: Duration in milliseconds the query took to execute
+- `last_result_rows`: Number of rows returned by the query
+- `error`: Error message if the test failed
 
 ## Development
 

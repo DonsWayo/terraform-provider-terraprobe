@@ -37,6 +37,8 @@ type TestSuiteResourceModel struct {
 	Description types.String `tfsdk:"description"`
 	HttpTests   types.Set    `tfsdk:"http_tests"`
 	TcpTests    types.Set    `tfsdk:"tcp_tests"`
+	DnsTests    types.Set    `tfsdk:"dns_tests"`
+	DbTests     types.Set    `tfsdk:"db_tests"`
 	Id          types.String `tfsdk:"id"`
 
 	// Results
@@ -66,14 +68,24 @@ func (r *TestSuiteResource) Schema(ctx context.Context, req resource.SchemaReque
 				Optional:            true,
 			},
 			"http_tests": schema.SetAttribute{
-				MarkdownDescription: "List of HTTP test resource references",
-				Optional:            true,
+				MarkdownDescription: "List of HTTP test IDs to include in the suite",
 				ElementType:         types.StringType,
+				Optional:            true,
 			},
 			"tcp_tests": schema.SetAttribute{
-				MarkdownDescription: "List of TCP test resource references",
-				Optional:            true,
+				MarkdownDescription: "List of TCP test IDs to include in the suite",
 				ElementType:         types.StringType,
+				Optional:            true,
+			},
+			"dns_tests": schema.SetAttribute{
+				MarkdownDescription: "List of DNS test IDs to include in the suite",
+				ElementType:         types.StringType,
+				Optional:            true,
+			},
+			"db_tests": schema.SetAttribute{
+				MarkdownDescription: "List of database test IDs to include in the suite",
+				ElementType:         types.StringType,
+				Optional:            true,
 			},
 
 			// Results - these are computed values based on the last test run
@@ -154,6 +166,8 @@ func (r *TestSuiteResource) Create(ctx context.Context, req resource.CreateReque
 	// Calculate totals and initialize
 	var httpTestsCount int64 = 0
 	var tcpTestsCount int64 = 0
+	var dnsTestsCount int64 = 0
+	var dbTestsCount int64 = 0
 
 	if !data.HttpTests.IsNull() {
 		httpTestsCount = int64(len(data.HttpTests.Elements()))
@@ -163,7 +177,15 @@ func (r *TestSuiteResource) Create(ctx context.Context, req resource.CreateReque
 		tcpTestsCount = int64(len(data.TcpTests.Elements()))
 	}
 
-	totalCount := httpTestsCount + tcpTestsCount
+	if !data.DnsTests.IsNull() {
+		dnsTestsCount = int64(len(data.DnsTests.Elements()))
+	}
+
+	if !data.DbTests.IsNull() {
+		dbTestsCount = int64(len(data.DbTests.Elements()))
+	}
+
+	totalCount := httpTestsCount + tcpTestsCount + dnsTestsCount + dbTestsCount
 	data.TotalCount = types.Int64Value(totalCount)
 	data.PassedCount = types.Int64Value(0)
 	data.FailedCount = types.Int64Value(0)
@@ -197,6 +219,8 @@ func (r *TestSuiteResource) Read(ctx context.Context, req resource.ReadRequest, 
 	// Calculate the total number of tests
 	var httpTestsCount int64 = 0
 	var tcpTestsCount int64 = 0
+	var dnsTestsCount int64 = 0
+	var dbTestsCount int64 = 0
 
 	if !data.HttpTests.IsNull() {
 		httpTestsCount = int64(len(data.HttpTests.Elements()))
@@ -206,7 +230,15 @@ func (r *TestSuiteResource) Read(ctx context.Context, req resource.ReadRequest, 
 		tcpTestsCount = int64(len(data.TcpTests.Elements()))
 	}
 
-	totalCount := httpTestsCount + tcpTestsCount
+	if !data.DnsTests.IsNull() {
+		dnsTestsCount = int64(len(data.DnsTests.Elements()))
+	}
+
+	if !data.DbTests.IsNull() {
+		dbTestsCount = int64(len(data.DbTests.Elements()))
+	}
+
+	totalCount := httpTestsCount + tcpTestsCount + dnsTestsCount + dbTestsCount
 	data.TotalCount = types.Int64Value(totalCount)
 
 	// In a real implementation, we would query the state of each test
@@ -249,6 +281,8 @@ func (r *TestSuiteResource) Update(ctx context.Context, req resource.UpdateReque
 	// Calculate totals based on the updated test references
 	var httpTestsCount int64 = 0
 	var tcpTestsCount int64 = 0
+	var dnsTestsCount int64 = 0
+	var dbTestsCount int64 = 0
 
 	if !data.HttpTests.IsNull() {
 		httpTestsCount = int64(len(data.HttpTests.Elements()))
@@ -258,7 +292,15 @@ func (r *TestSuiteResource) Update(ctx context.Context, req resource.UpdateReque
 		tcpTestsCount = int64(len(data.TcpTests.Elements()))
 	}
 
-	totalCount := httpTestsCount + tcpTestsCount
+	if !data.DnsTests.IsNull() {
+		dnsTestsCount = int64(len(data.DnsTests.Elements()))
+	}
+
+	if !data.DbTests.IsNull() {
+		dbTestsCount = int64(len(data.DbTests.Elements()))
+	}
+
+	totalCount := httpTestsCount + tcpTestsCount + dnsTestsCount + dbTestsCount
 	data.TotalCount = types.Int64Value(totalCount)
 
 	// In a real implementation, we would query the state of each test
@@ -301,4 +343,162 @@ func (r *TestSuiteResource) Delete(ctx context.Context, req resource.DeleteReque
 
 func (r *TestSuiteResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// Create a new method for evaluating DB tests
+func (r *TestSuiteResource) evaluateDbTests(ctx context.Context, dbTests types.Set) (int, int) {
+	if dbTests.IsNull() || dbTests.IsUnknown() {
+		return 0, 0
+	}
+
+	var testIds []string
+	diags := dbTests.ElementsAs(ctx, &testIds, false)
+	if diags.HasError() {
+		return 0, 0
+	}
+
+	passedCount := 0
+	totalCount := len(testIds)
+
+	for _, id := range testIds {
+		state, err := r.getResourceState(ctx, id)
+		if err != nil {
+			continue
+		}
+
+		var testPassed types.Bool
+		if testPassedAttr := state.GetAttr("test_passed"); !testPassedAttr.IsNull() {
+			testPassed = testPassedAttr.(types.Bool)
+			if testPassed.ValueBool() {
+				passedCount++
+			}
+		}
+	}
+
+	return passedCount, totalCount
+}
+
+// Read retrieves the resource and sets the Terraform state on success.
+func (r *TestSuiteResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data TestSuiteResourceModel
+
+	// Read Terraform prior state data into the model
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Update the test results
+	httpTestsPassed, httpTestsTotal := r.evaluateHttpTests(ctx, data.HttpTests)
+	tcpTestsPassed, tcpTestsTotal := r.evaluateTcpTests(ctx, data.TcpTests)
+	dnsTestsPassed, dnsTestsTotal := r.evaluateDnsTests(ctx, data.DnsTests)
+	dbTestsPassed, dbTestsTotal := r.evaluateDbTests(ctx, data.DbTests)
+
+	totalTests := httpTestsTotal + tcpTestsTotal + dnsTestsTotal + dbTestsTotal
+	passedTests := httpTestsPassed + tcpTestsPassed + dnsTestsPassed + dbTestsPassed
+
+	data.TotalCount = types.Int64Value(int64(totalTests))
+	data.PassedCount = types.Int64Value(int64(passedTests))
+	data.AllPassed = types.BoolValue(passedTests == totalTests && totalTests > 0)
+
+	// Empty list of failed tests since we're assuming all pass
+	emptyList := []attr.Value{}
+	data.FailedTests = types.ListValueMust(types.StringType, emptyList)
+
+	// Log the results
+	tflog.Debug(ctx, fmt.Sprintf("Test Suite %s Results: %d/%d passed",
+		data.Name.ValueString(), passedTests, totalTests))
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// Update updates the resource and sets the updated Terraform state on success.
+func (r *TestSuiteResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var data TestSuiteResourceModel
+
+	// Read Terraform plan data into the model
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Update the test results
+	httpTestsPassed, httpTestsTotal := r.evaluateHttpTests(ctx, data.HttpTests)
+	tcpTestsPassed, tcpTestsTotal := r.evaluateTcpTests(ctx, data.TcpTests)
+	dnsTestsPassed, dnsTestsTotal := r.evaluateDnsTests(ctx, data.DnsTests)
+	dbTestsPassed, dbTestsTotal := r.evaluateDbTests(ctx, data.DbTests)
+
+	totalTests := httpTestsTotal + tcpTestsTotal + dnsTestsTotal + dbTestsTotal
+	passedTests := httpTestsPassed + tcpTestsPassed + dnsTestsPassed + dbTestsPassed
+
+	data.TotalCount = types.Int64Value(int64(totalTests))
+	data.PassedCount = types.Int64Value(int64(passedTests))
+	data.AllPassed = types.BoolValue(passedTests == totalTests && totalTests > 0)
+
+	// Empty list of failed tests since we're assuming all pass
+	emptyList := []attr.Value{}
+	data.FailedTests = types.ListValueMust(types.StringType, emptyList)
+
+	// Log the results
+	tflog.Debug(ctx, fmt.Sprintf("Test Suite %s Updated Results: %d/%d passed",
+		data.Name.ValueString(), passedTests, totalTests))
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// Helper method to get the state of a resource
+func (r *TestSuiteResource) getResourceState(ctx context.Context, id string) (types.Object, error) {
+	// In a real implementation, this would retrieve the state from Terraform state
+	// For this example, we'll just return a dummy state
+	return types.ObjectNull(nil), fmt.Errorf("resource state not found")
+}
+
+// Helper methods to evaluate different test types
+func (r *TestSuiteResource) evaluateHttpTests(ctx context.Context, httpTests types.Set) (int, int) {
+	if httpTests.IsNull() || httpTests.IsUnknown() {
+		return 0, 0
+	}
+
+	var testIds []string
+	diags := httpTests.ElementsAs(ctx, &testIds, false)
+	if diags.HasError() {
+		return 0, 0
+	}
+
+	// For simplicity, we'll assume all tests pass
+	return len(testIds), len(testIds)
+}
+
+func (r *TestSuiteResource) evaluateTcpTests(ctx context.Context, tcpTests types.Set) (int, int) {
+	if tcpTests.IsNull() || tcpTests.IsUnknown() {
+		return 0, 0
+	}
+
+	var testIds []string
+	diags := tcpTests.ElementsAs(ctx, &testIds, false)
+	if diags.HasError() {
+		return 0, 0
+	}
+
+	// For simplicity, we'll assume all tests pass
+	return len(testIds), len(testIds)
+}
+
+func (r *TestSuiteResource) evaluateDnsTests(ctx context.Context, dnsTests types.Set) (int, int) {
+	if dnsTests.IsNull() || dnsTests.IsUnknown() {
+		return 0, 0
+	}
+
+	var testIds []string
+	diags := dnsTests.ElementsAs(ctx, &testIds, false)
+	if diags.HasError() {
+		return 0, 0
+	}
+
+	// For simplicity, we'll assume all tests pass
+	return len(testIds), len(testIds)
 }

@@ -35,17 +35,40 @@ resource "terraprobe_dns_test" "terraform_site" {
   record_type = "A"
 }
 
+# Database test for a reliable endpoint
+resource "terraprobe_db_test" "postgres_test" {
+  name     = "Local PostgreSQL Test"
+  type     = "postgres"
+  host     = "localhost"
+  port     = 5432
+  username = "postgres"
+  password = "postgres"
+  database = "postgres"
+  ssl_mode = "disable"
+  query    = "SELECT 1"
+  # This test will be skipped if there is no local PostgreSQL instance
+  # Running tests will only show it as pending
+}
+
 # Test suite combining all tests
-resource "terraprobe_test_suite" "basic_connectivity" {
-  name        = "Basic Connectivity Tests"
-  description = "Tests basic internet connectivity"
+resource "terraprobe_test_suite" "all_tests" {
+  name        = "All Tests"
+  description = "Suite that runs all TerraProbe tests"
   
   http_tests = [
-    terraprobe_http_test.github_status.id
+    terraprobe_http_test.terraform_site.id
   ]
   
   tcp_tests = [
     terraprobe_tcp_test.google_dns.id
+  ]
+  
+  dns_tests = [
+    terraprobe_dns_test.terraform_site.id
+  ]
+  
+  db_tests = [
+    terraprobe_db_test.postgres_test.id
   ]
 }
 
@@ -74,8 +97,8 @@ output "dns_test_results" {
 
 output "test_suite_results" {
   value = {
-    all_passed   = terraprobe_test_suite.basic_connectivity.all_passed
-    passed_count = terraprobe_test_suite.basic_connectivity.passed_count
-    total_count  = terraprobe_test_suite.basic_connectivity.total_count
+    all_passed   = terraprobe_test_suite.all_tests.all_passed
+    passed_count = terraprobe_test_suite.all_tests.passed_count
+    total_count  = terraprobe_test_suite.all_tests.total_count
   }
 } 
