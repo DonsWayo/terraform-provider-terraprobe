@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package provider
 
 import (
@@ -126,6 +123,7 @@ type TerraProbeClientConfig struct {
 func (p *TerraProbeProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewHttpTestResource,
+		NewTcpTestResource,
 	}
 }
 

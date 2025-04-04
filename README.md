@@ -6,9 +6,10 @@ TerraProbe is a Terraform provider that validates infrastructure after deploymen
 
 - **Seamless Integration**: Works within your existing Terraform workflow
 - **HTTP Testing**: Validate REST APIs, web services, and HTTP endpoints
+- **TCP Testing**: Verify network connectivity to hosts and ports
 - **Test Results in State**: All test results are saved in Terraform state for easy access
 - **Configurable Retries**: Configure timeout, retry count, and retry delay
-- **Rich Output**: Get detailed test results including response time, status code, and response body
+- **Rich Output**: Get detailed test results including response times, status codes, and error messages
 
 ## Usage
 
@@ -38,14 +39,28 @@ resource "terraprobe_http_test" "api_health" {
   expect_contains   = "status: healthy"
 }
 
+# Define a TCP test to verify database connectivity
+resource "terraprobe_tcp_test" "database_connection" {
+  name = "Database Connection Test"
+  host = aws_db_instance.postgres.address
+  port = aws_db_instance.postgres.port
+  
+  # This ensures the test runs after the database is created
+  depends_on = [aws_db_instance.postgres]
+}
+
 # Output test results
-output "api_test_results" {
+output "infrastructure_tests" {
   value = {
-    passed           = terraprobe_http_test.api_health.test_passed
-    last_run         = terraprobe_http_test.api_health.last_run
-    status_code      = terraprobe_http_test.api_health.last_status_code
-    response_time_ms = terraprobe_http_test.api_health.last_response_time
-    error            = terraprobe_http_test.api_health.error
+    api_status = {
+      passed      = terraprobe_http_test.api_health.test_passed
+      status_code = terraprobe_http_test.api_health.last_status_code
+      error       = terraprobe_http_test.api_health.error
+    }
+    db_connection = {
+      passed = terraprobe_tcp_test.database_connection.test_passed
+      error  = terraprobe_tcp_test.database_connection.error
+    }
   }
 }
 ```
@@ -92,6 +107,31 @@ The HTTP test resource allows you to validate HTTP endpoints.
 | `test_passed` | Whether the test passed |
 | `error` | Error message if the test failed |
 
+### `terraprobe_tcp_test`
+
+The TCP test resource allows you to validate TCP connectivity to hosts and ports.
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `name` | Descriptive name for the test | Yes |
+| `host` | Host to connect to (IP address or hostname) | Yes |
+| `port` | Port to connect to | Yes |
+| `timeout` | Timeout in seconds (overrides provider default) | No |
+| `retries` | Number of retries (overrides provider default) | No |
+| `retry_delay` | Delay between retries in seconds (overrides provider default) | No |
+
+#### Attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `id` | Test identifier |
+| `last_run` | Timestamp of the last test run |
+| `last_connect_time` | Connection time in milliseconds from the last test run |
+| `test_passed` | Whether the test passed (connection was established) |
+| `error` | Error message if the test failed |
+
 ## Requirements
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.1
@@ -109,7 +149,7 @@ go install
 
 ## Future Plans
 
-- Additional test types (gRPC, TCP, DNS, Kubernetes, Databases)
+- Additional test types (gRPC, DNS, Kubernetes, Databases)
 - Test suites for grouping tests
 - AI-powered test result analysis
 - Customizable notifications and actions on test failure
