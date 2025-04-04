@@ -1,11 +1,12 @@
 # TerraProbe - Infrastructure Testing Terraform Provider
 
-TerraProbe is a Terraform provider that facilitates infrastructure testing directly through Terraform. It allows you to define and run automated tests for HTTP endpoints, TCP connections, and more, integrating testing directly into your Terraform workflow.
+TerraProbe is a Terraform provider that facilitates infrastructure testing directly through Terraform. It allows you to define and run automated tests for HTTP endpoints, TCP connections, DNS resolution, and more, integrating testing directly into your Terraform workflow.
 
 ## Features
 
 - **HTTP Testing**: Test HTTP/HTTPS endpoints for status codes, response body content, and more
 - **TCP Testing**: Test TCP connections to specified hosts and ports
+- **DNS Testing**: Test DNS resolution for various record types (A, AAAA, CNAME, MX, TXT, NS)
 - **Test Suites**: Group tests together and get aggregated results
 - **Terraform Integration**: Seamlessly integrates with your existing Terraform workflows
 
@@ -51,6 +52,30 @@ resource "terraprobe_tcp_test" "example" {
 
 output "db_status" {
   value = terraprobe_tcp_test.example.test_passed ? "Connected" : "Failed"
+}
+```
+
+### DNS Test
+
+```hcl
+resource "terraprobe_dns_test" "example" {
+  name        = "Domain Resolution Check"
+  hostname    = "example.com"
+  record_type = "A"            # Supports A, AAAA, CNAME, MX, TXT, NS
+  
+  # Optional: Specify an expected result
+  expect_result = "93.184.216.34"
+  
+  # Optional: Use a specific DNS resolver
+  resolver = "8.8.8.8"
+}
+
+output "dns_status" {
+  value = {
+    resolved = terraprobe_dns_test.example.test_passed
+    ip_addresses = terraprobe_dns_test.example.last_result
+    query_time_ms = terraprobe_dns_test.example.last_result_time
+  }
 }
 ```
 

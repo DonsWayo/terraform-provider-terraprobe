@@ -125,6 +125,7 @@ func (p *TerraProbeProvider) Resources(ctx context.Context) []func() resource.Re
 		NewHttpTestResource,
 		NewTcpTestResource,
 		NewTestSuiteResource,
+		NewDnsTestResource,
 	}
 }
 

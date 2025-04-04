@@ -52,8 +52,13 @@ fi
 # Build the provider
 echo "Building provider..."
 go build -o terraform-provider-terraprobe
-mkdir -p ~/.terraform.d/plugins/registry.terraform.io/hashicorp/terraprobe/0.1.0/darwin_amd64/
-cp terraform-provider-terraprobe ~/.terraform.d/plugins/registry.terraform.io/hashicorp/terraprobe/0.1.0/darwin_amd64/
+
+# Create directories for the terraform plugin if they don't exist
+PLUGIN_DIR=~/.terraform.d/plugins/registry.terraform.io/hashicorp/terraprobe/0.1.0/darwin_amd64/
+mkdir -p $PLUGIN_DIR
+
+# Copy the provider to the plugin directory
+cp terraform-provider-terraprobe $PLUGIN_DIR
 
 # Return to test directory
 cd test-config
@@ -64,6 +69,11 @@ export TF_CLI_CONFIG_FILE=$(pwd)/.terraformrc
 # If we're in test or all mode, run Terraform
 if [[ "$MODE" == "apply" || "$MODE" == "test" || "$MODE" == "all" ]]; then
   echo "Running Terraform apply..."
+  
+  # Force recreation of the .terraform directory
+  rm -rf .terraform
+  
+  # Run terraform init and apply
   terraform init
   terraform apply -auto-approve
   

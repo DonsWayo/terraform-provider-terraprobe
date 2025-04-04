@@ -28,7 +28,14 @@ resource "terraprobe_tcp_test" "google_dns" {
   port = 53
 }
 
-# Test suite combining both tests
+# DNS test for resolving a domain
+resource "terraprobe_dns_test" "terraform_site" {
+  name        = "Terraform DNS Check"
+  hostname    = "terraform.io"
+  record_type = "A"
+}
+
+# Test suite combining all tests
 resource "terraprobe_test_suite" "basic_connectivity" {
   name        = "Basic Connectivity Tests"
   description = "Tests basic internet connectivity"
@@ -54,6 +61,14 @@ output "tcp_test_results" {
   value = {
     passed        = terraprobe_tcp_test.google_dns.test_passed
     connect_time  = terraprobe_tcp_test.google_dns.last_connect_time
+  }
+}
+
+output "dns_test_results" {
+  value = {
+    passed       = terraprobe_dns_test.terraform_site.test_passed
+    result       = terraprobe_dns_test.terraform_site.last_result
+    response_time = terraprobe_dns_test.terraform_site.last_result_time
   }
 }
 
