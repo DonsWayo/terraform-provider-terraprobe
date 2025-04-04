@@ -1,23 +1,101 @@
-# Terraform Provider Scaffolding (Terraform Plugin Framework)
+# TerraProbe: Terraform Provider for Infrastructure Testing
 
-_This template repository is built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework). The template repository built on the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) can be found at [terraform-provider-scaffolding](https://github.com/hashicorp/terraform-provider-scaffolding). See [Which SDK Should I Use?](https://developer.hashicorp.com/terraform/plugin/framework-benefits) in the Terraform documentation for additional information._
+TerraProbe is a Terraform provider that validates infrastructure after deployment through various tests. It integrates with the regular Terraform workflow, runs post-deployment tests against your infrastructure, and saves test results as Terraform state.
 
-This repository is a *template* for a [Terraform](https://www.terraform.io) provider. It is intended as a starting point for creating Terraform providers, containing:
+## Features
 
-- A resource and a data source (`internal/provider/`),
-- Examples (`examples/`) and generated documentation (`docs/`),
-- Miscellaneous meta files.
+- **Seamless Integration**: Works within your existing Terraform workflow
+- **HTTP Testing**: Validate REST APIs, web services, and HTTP endpoints
+- **Test Results in State**: All test results are saved in Terraform state for easy access
+- **Configurable Retries**: Configure timeout, retry count, and retry delay
+- **Rich Output**: Get detailed test results including response time, status code, and response body
 
-These files contain boilerplate code that you will need to edit to create your own Terraform provider. Tutorials for creating Terraform providers can be found on the [HashiCorp Developer](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework) platform. _Terraform Plugin Framework specific guides are titled accordingly._
+## Usage
 
-Please see the [GitHub template repository documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for how to create a new repository from this template on GitHub.
+```hcl
+terraform {
+  required_providers {
+    terraprobe = {
+      source = "hashicorp/terraprobe"
+    }
+  }
+}
 
-Once you've written your provider, you'll want to [publish it on the Terraform Registry](https://developer.hashicorp.com/terraform/registry/providers/publishing) so that others can use it.
+provider "terraprobe" {
+  default_timeout     = 30
+  default_retries     = 3
+  default_retry_delay = 5
+}
+
+# Define an HTTP test to validate an API endpoint
+resource "terraprobe_http_test" "api_health" {
+  name        = "API Health Check"
+  url         = "https://${aws_lb.api.dns_name}/health"
+  method      = "GET"
+  
+  # Define assertions
+  expect_status_code = 200
+  expect_contains   = "status: healthy"
+}
+
+# Output test results
+output "api_test_results" {
+  value = {
+    passed           = terraprobe_http_test.api_health.test_passed
+    last_run         = terraprobe_http_test.api_health.last_run
+    status_code      = terraprobe_http_test.api_health.last_status_code
+    response_time_ms = terraprobe_http_test.api_health.last_response_time
+    error            = terraprobe_http_test.api_health.error
+  }
+}
+```
+
+## Provider Configuration
+
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `default_timeout` | Default timeout in seconds for all tests | `30` |
+| `default_retries` | Default number of retries for all tests | `3` |
+| `default_retry_delay` | Default delay between retries in seconds | `5` |
+| `user_agent` | User agent to use for HTTP requests | `TerraProbe Terraform Provider` |
+
+## Resources
+
+### `terraprobe_http_test`
+
+The HTTP test resource allows you to validate HTTP endpoints.
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `name` | Descriptive name for the test | Yes |
+| `url` | URL to test | Yes |
+| `method` | HTTP method (GET, POST, PUT, DELETE, etc.) | No (default: GET) |
+| `headers` | Map of HTTP headers | No |
+| `body` | Request body for POST, PUT, etc. | No |
+| `timeout` | Timeout in seconds (overrides provider default) | No |
+| `retries` | Number of retries (overrides provider default) | No |
+| `retry_delay` | Delay between retries in seconds (overrides provider default) | No |
+| `expect_status_code` | Expected HTTP status code | No (default: 200) |
+| `expect_contains` | String to look for in the response body | No |
+
+#### Attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `id` | Test identifier |
+| `last_run` | Timestamp of the last test run |
+| `last_status_code` | Status code from the last test run |
+| `last_response_body` | Response body from the last test run |
+| `last_response_time` | Response time in milliseconds from the last test run |
+| `test_passed` | Whether the test passed |
+| `error` | Error message if the test failed |
 
 ## Requirements
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.23
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.1
+- [Go](https://golang.org/doc/install) >= 1.20
 
 ## Building The Provider
 
@@ -29,36 +107,9 @@ Once you've written your provider, you'll want to [publish it on the Terraform R
 go install
 ```
 
-## Adding Dependencies
+## Future Plans
 
-This provider uses [Go modules](https://github.com/golang/go/wiki/Modules).
-Please see the Go documentation for the most up to date information about using Go modules.
-
-To add a new dependency `github.com/author/dependency` to your Terraform provider:
-
-```shell
-go get github.com/author/dependency
-go mod tidy
-```
-
-Then commit the changes to `go.mod` and `go.sum`.
-
-## Using the provider
-
-Fill this in for each provider
-
-## Developing the Provider
-
-If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
-
-To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
-
-To generate or update documentation, run `make generate`.
-
-In order to run the full suite of Acceptance tests, run `make testacc`.
-
-*Note:* Acceptance tests create real resources, and often cost money to run.
-
-```shell
-make testacc
-```
+- Additional test types (gRPC, TCP, DNS, Kubernetes, Databases)
+- Test suites for grouping tests
+- AI-powered test result analysis
+- Customizable notifications and actions on test failure

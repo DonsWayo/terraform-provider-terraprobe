@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
@@ -16,85 +17,139 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// Ensure ScaffoldingProvider satisfies various provider interfaces.
-var _ provider.Provider = &ScaffoldingProvider{}
-var _ provider.ProviderWithFunctions = &ScaffoldingProvider{}
-var _ provider.ProviderWithEphemeralResources = &ScaffoldingProvider{}
+// Ensure TerraProbeProvider satisfies various provider interfaces.
+var _ provider.Provider = &TerraProbeProvider{}
+var _ provider.ProviderWithFunctions = &TerraProbeProvider{}
+var _ provider.ProviderWithEphemeralResources = &TerraProbeProvider{}
 
-// ScaffoldingProvider defines the provider implementation.
-type ScaffoldingProvider struct {
+// TerraProbeProvider defines the provider implementation.
+type TerraProbeProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
 }
 
-// ScaffoldingProviderModel describes the provider data model.
-type ScaffoldingProviderModel struct {
-	Endpoint types.String `tfsdk:"endpoint"`
+// TerraProbeProviderModel describes the provider data model.
+type TerraProbeProviderModel struct {
+	DefaultTimeout    types.Int64  `tfsdk:"default_timeout"`
+	DefaultRetries    types.Int64  `tfsdk:"default_retries"`
+	DefaultRetryDelay types.Int64  `tfsdk:"default_retry_delay"`
+	UserAgent         types.String `tfsdk:"user_agent"`
 }
 
-func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "scaffolding"
+func (p *TerraProbeProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "terraprobe"
 	resp.Version = p.version
 }
 
-func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *TerraProbeProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "The TerraProbe provider allows you to validate infrastructure after deployment through various tests. This provider is designed to integrate with your regular Terraform workflow.",
+
 		Attributes: map[string]schema.Attribute{
-			"endpoint": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
+			"default_timeout": schema.Int64Attribute{
+				MarkdownDescription: "Default timeout in seconds for all tests. Can be overridden at the resource level.",
+				Optional:            true,
+			},
+			"default_retries": schema.Int64Attribute{
+				MarkdownDescription: "Default number of retries for all tests. Can be overridden at the resource level.",
+				Optional:            true,
+			},
+			"default_retry_delay": schema.Int64Attribute{
+				MarkdownDescription: "Default delay between retries in seconds. Can be overridden at the resource level.",
+				Optional:            true,
+			},
+			"user_agent": schema.StringAttribute{
+				MarkdownDescription: "User agent to use for HTTP requests.",
 				Optional:            true,
 			},
 		},
 	}
 }
 
-func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data ScaffoldingProviderModel
+func (p *TerraProbeProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var config TerraProbeProviderModel
 
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
+	// Set default values if not provided
+	timeout := 30 * time.Second
+	if !config.DefaultTimeout.IsNull() {
+		timeout = time.Duration(config.DefaultTimeout.ValueInt64()) * time.Second
+	}
 
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	retries := int64(3)
+	if !config.DefaultRetries.IsNull() {
+		retries = config.DefaultRetries.ValueInt64()
+	}
+
+	retryDelay := 5 * time.Second
+	if !config.DefaultRetryDelay.IsNull() {
+		retryDelay = time.Duration(config.DefaultRetryDelay.ValueInt64()) * time.Second
+	}
+
+	userAgent := "TerraProbe Terraform Provider"
+	if !config.UserAgent.IsNull() {
+		userAgent = config.UserAgent.ValueString()
+	}
+
+	// Create a custom HTTP client with the specified timeout
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
+	// Create a client configuration
+	clientConfig := &TerraProbeClientConfig{
+		HttpClient: client,
+		UserAgent:  userAgent,
+		Retries:    retries,
+		RetryDelay: retryDelay,
+	}
+
+	resp.DataSourceData = clientConfig
+	resp.ResourceData = clientConfig
 }
 
-func (p *ScaffoldingProvider) Resources(ctx context.Context) []func() resource.Resource {
+// TerraProbeClientConfig contains the provider-level configuration for client operations
+type TerraProbeClientConfig struct {
+	HttpClient *http.Client
+	UserAgent  string
+	Retries    int64
+	RetryDelay time.Duration
+}
+
+func (p *TerraProbeProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewExampleResource,
+		NewHttpTestResource,
 	}
 }
 
-func (p *ScaffoldingProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
+func (p *TerraProbeProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
 	return []func() ephemeral.EphemeralResource{
-		NewExampleEphemeralResource,
+		// In the future, we may add ephemeral resources for one-time tests
 	}
 }
 
-func (p *ScaffoldingProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *TerraProbeProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewExampleDataSource,
+		// We'll implement the test results data source later
 	}
 }
 
-func (p *ScaffoldingProvider) Functions(ctx context.Context) []func() function.Function {
+func (p *TerraProbeProvider) Functions(ctx context.Context) []func() function.Function {
 	return []func() function.Function{
-		NewExampleFunction,
+		// We may add utility functions in the future
 	}
 }
 
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
-		return &ScaffoldingProvider{
+		return &TerraProbeProvider{
 			version: version,
 		}
 	}
