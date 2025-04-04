@@ -7,6 +7,7 @@ TerraProbe is a Terraform provider that validates infrastructure after deploymen
 - **Seamless Integration**: Works within your existing Terraform workflow
 - **HTTP Testing**: Validate REST APIs, web services, and HTTP endpoints
 - **TCP Testing**: Verify network connectivity to hosts and ports
+- **Test Suites**: Group related tests together with aggregate results
 - **Test Results in State**: All test results are saved in Terraform state for easy access
 - **Configurable Retries**: Configure timeout, retry count, and retry delay
 - **Rich Output**: Get detailed test results including response times, status codes, and error messages
@@ -49,18 +50,28 @@ resource "terraprobe_tcp_test" "database_connection" {
   depends_on = [aws_db_instance.postgres]
 }
 
+# Group tests in a test suite
+resource "terraprobe_test_suite" "production_validation" {
+  name        = "Production Health Checks"
+  description = "Validates all production services are healthy"
+  
+  # Reference the above tests
+  http_tests = [
+    terraprobe_http_test.api_health.id
+  ]
+  
+  tcp_tests = [
+    terraprobe_tcp_test.database_connection.id
+  ]
+}
+
 # Output test results
 output "infrastructure_tests" {
   value = {
-    api_status = {
-      passed      = terraprobe_http_test.api_health.test_passed
-      status_code = terraprobe_http_test.api_health.last_status_code
-      error       = terraprobe_http_test.api_health.error
-    }
-    db_connection = {
-      passed = terraprobe_tcp_test.database_connection.test_passed
-      error  = terraprobe_tcp_test.database_connection.error
-    }
+    all_passed   = terraprobe_test_suite.production_validation.all_passed
+    passed_count = terraprobe_test_suite.production_validation.passed_count
+    failed_count = terraprobe_test_suite.production_validation.failed_count
+    failed_tests = terraprobe_test_suite.production_validation.failed_tests
   }
 }
 ```
@@ -132,6 +143,31 @@ The TCP test resource allows you to validate TCP connectivity to hosts and ports
 | `test_passed` | Whether the test passed (connection was established) |
 | `error` | Error message if the test failed |
 
+### `terraprobe_test_suite`
+
+The test suite resource allows you to group related tests together and get aggregate results.
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `name` | Name of the test suite | Yes |
+| `description` | Description of the test suite | No |
+| `http_tests` | List of HTTP test resource references | No |
+| `tcp_tests` | List of TCP test resource references | No |
+
+#### Attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `id` | Test suite identifier |
+| `last_run` | Timestamp of the last test run |
+| `all_passed` | Whether all tests passed |
+| `passed_count` | Number of tests that passed |
+| `failed_count` | Number of tests that failed |
+| `total_count` | Total number of tests in the suite |
+| `failed_tests` | List of tests that failed |
+
 ## Requirements
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.1
@@ -150,6 +186,6 @@ go install
 ## Future Plans
 
 - Additional test types (gRPC, DNS, Kubernetes, Databases)
-- Test suites for grouping tests
+- Advanced assertion capabilities
 - AI-powered test result analysis
 - Customizable notifications and actions on test failure
