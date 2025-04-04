@@ -265,8 +265,14 @@ func setupPostgres(t *testing.T) (*dockertest.Resource, string, int, error) {
 
 	// Determine host and port
 	host := "localhost"
-	port, _ := resource.GetPort("5432/tcp")
-	portInt := resource.GetPort("5432/tcp")
+	port := resource.GetPort("5432/tcp")
+	portInt := 0
+
+	// Convert port string to int
+	_, err = fmt.Sscanf(port, "%d", &portInt)
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("failed to parse port: %v", err)
+	}
 
 	// Wait for PostgreSQL to be ready
 	if err := pool.Retry(func() error {
@@ -310,8 +316,14 @@ func setupMySQL(t *testing.T) (*dockertest.Resource, string, int, error) {
 
 	// Determine host and port
 	host := "localhost"
-	port, _ := resource.GetPort("3306/tcp")
-	portInt := resource.GetPort("3306/tcp")
+	port := resource.GetPort("3306/tcp")
+	portInt := 0
+
+	// Convert port string to int
+	_, err = fmt.Sscanf(port, "%d", &portInt)
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("failed to parse port: %v", err)
+	}
 
 	// Wait for MySQL to be ready
 	if err := pool.Retry(func() error {

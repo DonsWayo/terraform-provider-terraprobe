@@ -56,7 +56,7 @@ resource "terraprobe_test_suite" "all_tests" {
   description = "Suite that runs all TerraProbe tests"
   
   http_tests = [
-    terraprobe_http_test.terraform_site.id
+    terraprobe_http_test.github_status.id
   ]
   
   tcp_tests = [
