@@ -30,17 +30,37 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Check if Docker is available
+if ! command -v docker &> /dev/null; then
+  echo "Docker is not installed or not available in PATH. Some database tests may fail."
+  DOCKER_AVAILABLE=false
+else
+  # Check if Docker daemon is running
+  if ! docker info &> /dev/null; then
+    echo "Docker daemon is not running. Some database tests may fail."
+    DOCKER_AVAILABLE=false
+  else
+    echo "Docker is available. Database tests will use Docker containers."
+    DOCKER_AVAILABLE=true
+  fi
+fi
+
 # Change to the root directory
 cd ..
 
 # Run unit tests if requested
 if [[ "$MODE" == "unit-test" || "$MODE" == "all" ]]; then
   echo "Running Go unit tests..."
+  
+  # Run the tests
   go test ./internal/provider/... -v
-  if [ $? -ne 0 ]; then
-    echo "Unit tests failed"
-    exit 1
+  TEST_EXIT_CODE=$?
+  
+  if [ $TEST_EXIT_CODE -ne 0 ]; then
+    echo "Unit tests failed with exit code $TEST_EXIT_CODE"
+    exit $TEST_EXIT_CODE
   fi
+  
   echo "Unit tests completed successfully"
   
   # Exit if only unit tests were requested
@@ -52,6 +72,11 @@ fi
 # Build the provider
 echo "Building provider..."
 go build -o terraform-provider-terraprobe
+BUILD_EXIT_CODE=$?
+if [ $BUILD_EXIT_CODE -ne 0 ]; then
+  echo "Build failed with exit code $BUILD_EXIT_CODE"
+  exit $BUILD_EXIT_CODE
+fi
 
 # Create directories for the terraform plugin if they don't exist
 PLUGIN_DIR=~/.terraform.d/plugins/registry.terraform.io/hashicorp/terraprobe/0.1.0/darwin_amd64/
@@ -59,6 +84,11 @@ mkdir -p $PLUGIN_DIR
 
 # Copy the provider to the plugin directory
 cp terraform-provider-terraprobe $PLUGIN_DIR
+COPY_EXIT_CODE=$?
+if [ $COPY_EXIT_CODE -ne 0 ]; then
+  echo "Failed to copy provider to plugin directory: $COPY_EXIT_CODE"
+  exit $COPY_EXIT_CODE
+fi
 
 # Return to test directory
 cd test-config
@@ -75,7 +105,18 @@ if [[ "$MODE" == "apply" || "$MODE" == "test" || "$MODE" == "all" ]]; then
   
   # Run terraform init and apply
   terraform init
+  INIT_EXIT_CODE=$?
+  if [ $INIT_EXIT_CODE -ne 0 ]; then
+    echo "Terraform init failed with exit code $INIT_EXIT_CODE"
+    exit $INIT_EXIT_CODE
+  fi
+  
   terraform apply -auto-approve
+  APPLY_EXIT_CODE=$?
+  if [ $APPLY_EXIT_CODE -ne 0 ]; then
+    echo "Terraform apply failed with exit code $APPLY_EXIT_CODE"
+    exit $APPLY_EXIT_CODE
+  fi
   
   # Show output
   echo "Terraform apply completed. Output:"

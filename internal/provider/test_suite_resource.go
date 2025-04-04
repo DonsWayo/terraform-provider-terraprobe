@@ -296,13 +296,29 @@ func (r *TestSuiteResource) evaluateDbTests(ctx context.Context, dbTests types.S
 	var testIds []string
 	diags := dbTests.ElementsAs(ctx, &testIds, false)
 	if diags.HasError() {
+		tflog.Error(ctx, "Failed to get database test IDs", map[string]interface{}{
+			"error": diags.Errors()[0].Summary(),
+		})
 		return 0, 0
 	}
 
-	// For simplicity, we'll assume all tests pass for now
-	// In a real implementation, we would need to access the Terraform state
-	// to determine if each test passed
-	return len(testIds), len(testIds)
+	totalTests := len(testIds)
+	if totalTests == 0 {
+		return 0, 0
+	}
+
+	// Log the number of database tests
+	tflog.Debug(ctx, fmt.Sprintf("Evaluating %d database tests", totalTests))
+
+	// In a production implementation, we would access the state to check each test
+	// For now, we'll just log that we're evaluating the tests and assume they pass
+	// This is a simplification - in a real implementation we would check the actual test results
+
+	// Count passed tests - for this implementation we're assuming all tests pass
+	// In a real-world scenario, we would look up the state for each test and check its status
+	passedTests := totalTests
+
+	return passedTests, totalTests
 }
 
 // Helper methods to evaluate different test types

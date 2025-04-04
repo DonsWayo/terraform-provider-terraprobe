@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -60,12 +59,6 @@ func TestDbTestResource_runTest(t *testing.T) {
 			t.Fatalf("Expected error for unsupported database type, but got none")
 		}
 	})
-
-	// Skip the actual database tests if the environment variable is not set
-	// This allows us to run the tests in CI without Docker
-	if os.Getenv("TERRAPROBE_TEST_DB") != "1" {
-		t.Skip("Skipping database integration tests. Set TERRAPROBE_TEST_DB=1 to run them.")
-	}
 
 	// Set up a PostgreSQL container
 	pgContainer, pgHost, pgPort, err := setupPostgres(t)
@@ -191,10 +184,16 @@ func TestAccDbTestResource(t *testing.T) {
 		t.Skip("skipping acceptance test in short mode")
 	}
 
-	// Skip if the environment variable is not set
-	if os.Getenv("TERRAPROBE_TEST_DB") != "1" {
-		t.Skip("Skipping database acceptance tests. Set TERRAPROBE_TEST_DB=1 to run them.")
+	// Set up Docker containers for the acceptance test
+	pgContainer, err := setupDockerForAcceptanceTest(t)
+	if err != nil {
+		t.Skipf("Skipping acceptance test due to Docker setup failure: %v", err)
 	}
+	defer func() {
+		if pgContainer != nil {
+			pgContainer.Close()
+		}
+	}()
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
@@ -217,8 +216,8 @@ func TestAccDbTestResource(t *testing.T) {
 				  query    = "SELECT 1"
 				}
 				`,
-				// We'll skip the check here because the test assumes a local PostgreSQL instance
-				// In a real CI environment, we'd set up a DB container, but for this test we'll skip the check
+				// We'll check if we can connect to local PostgreSQL
+				// If not, the test will be skipped
 				SkipFunc: func() (bool, error) {
 					// Try to connect to local PostgreSQL to see if it's available
 					db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=postgres sslmode=disable")
@@ -236,8 +235,17 @@ func TestAccDbTestResource(t *testing.T) {
 	})
 }
 
-// Helper functions to set up test databases using Docker
+// Helper function to set up Docker container for acceptance test
+func setupDockerForAcceptanceTest(t *testing.T) (*dockertest.Resource, error) {
+	// Set up a PostgreSQL container for the acceptance test
+	pgContainer, _, _, err := setupPostgres(t)
+	if err != nil {
+		return nil, err
+	}
+	return pgContainer, nil
+}
 
+// Helper functions to set up test databases using Docker
 func setupPostgres(t *testing.T) (*dockertest.Resource, string, int, error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {

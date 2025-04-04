@@ -35,19 +35,39 @@ resource "terraprobe_dns_test" "terraform_site" {
   record_type = "A"
 }
 
-# Database test for a reliable endpoint
+# PostgreSQL database test
+# This will use Docker containers in unit tests
+# For integration tests, it tries to connect to localhost
 resource "terraprobe_db_test" "postgres_test" {
-  name     = "Local PostgreSQL Test"
-  type     = "postgres"
-  host     = "localhost"
-  port     = 5432
-  username = "postgres"
-  password = "postgres"
-  database = "postgres"
-  ssl_mode = "disable"
-  query    = "SELECT 1"
-  # This test will be skipped if there is no local PostgreSQL instance
-  # Running tests will only show it as pending
+  name          = "PostgreSQL Test"
+  type          = "postgres"
+  host          = "localhost"
+  port          = 5432
+  username      = "postgres"
+  password      = "postgres"
+  database      = "postgres"
+  ssl_mode      = "disable"
+  query         = "SELECT 1"
+  timeout       = 5
+  retries       = 2
+  retry_delay   = 1
+}
+
+# MySQL database test
+# This will use Docker containers in unit tests
+# For integration tests, it tries to connect to localhost
+resource "terraprobe_db_test" "mysql_test" {
+  name          = "MySQL Test"
+  type          = "mysql"
+  host          = "localhost"
+  port          = 3306
+  username      = "root"
+  password      = "mysql"
+  database      = "mysql"
+  query         = "SELECT 1"
+  timeout       = 5
+  retries       = 2
+  retry_delay   = 1
 }
 
 # Test suite combining all tests
@@ -68,7 +88,8 @@ resource "terraprobe_test_suite" "all_tests" {
   ]
   
   db_tests = [
-    terraprobe_db_test.postgres_test.id
+    terraprobe_db_test.postgres_test.id,
+    terraprobe_db_test.mysql_test.id
   ]
 }
 
@@ -92,6 +113,24 @@ output "dns_test_results" {
     passed       = terraprobe_dns_test.terraform_site.test_passed
     result       = terraprobe_dns_test.terraform_site.last_result
     response_time = terraprobe_dns_test.terraform_site.last_result_time
+  }
+}
+
+output "postgres_test_results" {
+  value = {
+    passed       = terraprobe_db_test.postgres_test.test_passed
+    rows         = terraprobe_db_test.postgres_test.last_result_rows
+    query_time   = terraprobe_db_test.postgres_test.last_query_time
+    error        = terraprobe_db_test.postgres_test.error
+  }
+}
+
+output "mysql_test_results" {
+  value = {
+    passed       = terraprobe_db_test.mysql_test.test_passed
+    rows         = terraprobe_db_test.mysql_test.last_result_rows
+    query_time   = terraprobe_db_test.mysql_test.last_query_time
+    error        = terraprobe_db_test.mysql_test.error
   }
 }
 

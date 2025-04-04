@@ -7,6 +7,7 @@ TerraProbe is a Terraform provider that facilitates infrastructure testing direc
 - **HTTP Testing**: Test HTTP/HTTPS endpoints for status codes, response body content, and more
 - **TCP Testing**: Test TCP connections to specified hosts and ports
 - **DNS Testing**: Test DNS resolution for various record types (A, AAAA, CNAME, MX, TXT, NS)
+- **Database Testing**: Test database connectivity and query execution for PostgreSQL and MySQL
 - **Test Suites**: Group tests together and get aggregated results
 - **Terraform Integration**: Seamlessly integrates with your existing Terraform workflows
 
@@ -89,34 +90,7 @@ output "dns_status" {
 }
 ```
 
-### Test Suite
-
-```hcl
-resource "terraprobe_test_suite" "all_tests" {
-  name = "System Health Checks"
-  description = "Tests for all critical system components"
-  
-  http_tests = [
-    terraprobe_http_test.api.id,
-    terraprobe_http_test.website.id
-  ]
-  
-  tcp_tests = [
-    terraprobe_tcp_test.database.id,
-    terraprobe_tcp_test.redis.id
-  ]
-}
-
-output "system_health" {
-  value = {
-    passing = terraprobe_test_suite.all_tests.passed_count
-    failing = terraprobe_test_suite.all_tests.failed_count
-    all_healthy = terraprobe_test_suite.all_tests.all_passed
-  }
-}
-```
-
-### Database Test Resource
+### Database Test
 
 The database test resource (`terraprobe_db_test`) allows you to test connectivity and query execution against various database engines.
 
@@ -142,6 +116,15 @@ resource "terraprobe_db_test" "postgres_test" {
   retries    = 3
   retry_delay = 5
 }
+
+output "db_test_result" {
+  value = {
+    passed = terraprobe_db_test.postgres_test.test_passed
+    rows = terraprobe_db_test.postgres_test.last_result_rows
+    query_time = terraprobe_db_test.postgres_test.last_query_time
+    error = terraprobe_db_test.postgres_test.error
+  }
+}
 ```
 
 The resource provides the following attributes:
@@ -152,12 +135,49 @@ The resource provides the following attributes:
 - `last_result_rows`: Number of rows returned by the query
 - `error`: Error message if the test failed
 
+### Test Suite
+
+```hcl
+resource "terraprobe_test_suite" "all_tests" {
+  name = "System Health Checks"
+  description = "Tests for all critical system components"
+  
+  http_tests = [
+    terraprobe_http_test.api.id,
+    terraprobe_http_test.website.id
+  ]
+  
+  tcp_tests = [
+    terraprobe_tcp_test.database.id,
+    terraprobe_tcp_test.redis.id
+  ]
+  
+  dns_tests = [
+    terraprobe_dns_test.example.id
+  ]
+  
+  db_tests = [
+    terraprobe_db_test.postgres_test.id,
+    terraprobe_db_test.mysql_test.id
+  ]
+}
+
+output "system_health" {
+  value = {
+    passing = terraprobe_test_suite.all_tests.passed_count
+    failing = terraprobe_test_suite.all_tests.failed_count
+    all_healthy = terraprobe_test_suite.all_tests.all_passed
+  }
+}
+```
+
 ## Development
 
 ### Requirements
 
 - [Go](https://golang.org/doc/install) 1.18+ (to build the provider plugin)
 - [Terraform](https://www.terraform.io/downloads.html) 0.14.x+
+- [Docker](https://docs.docker.com/get-docker/) (for database tests)
 
 ### Building the Provider
 
@@ -173,6 +193,15 @@ The resource provides the following attributes:
    ```
 
 ### Testing
+
+#### Docker for Testing
+
+Database tests automatically use Docker containers for unit tests. During development and testing:
+
+- Unit tests will spin up temporary PostgreSQL and MySQL containers
+- The containers are automatically removed after tests complete
+- No manual setup of databases is required
+- Docker must be installed and running for database tests to execute properly
 
 #### Run Unit Tests
 
@@ -192,6 +221,8 @@ The `run-test.sh` script supports the following options:
 - `--test`: Run Terraform to test the provider
 - `--unit`: Run unit tests only
 - `--all`: Run both unit tests and Terraform tests
+
+The script will check for Docker availability and alert you if Docker is not available, which may affect database tests.
 
 ## Contributing
 
