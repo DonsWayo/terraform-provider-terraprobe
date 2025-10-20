@@ -353,7 +353,7 @@ func (r *HttpTestResource) runTest(ctx context.Context, data *HttpTestResourceMo
 		data.LastResponseBody = types.StringValue("")
 		return nil // Don't return error as we want to keep the error in the state
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Read the response body
 	respBody, err := io.ReadAll(resp.Body)

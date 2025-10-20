@@ -232,7 +232,7 @@ func (r *TcpTestResource) ImportState(ctx context.Context, req resource.ImportSt
 }
 
 // runTest runs the TCP test and updates the resource model with the results.
-func (r *TcpTestResource) runTest(ctx context.Context, data *TcpTestResourceModel) error {
+func (r *TcpTestResource) runTest(_ context.Context, data *TcpTestResourceModel) error {
 	// Get timeout from resource or default from provider
 	timeout := r.clientConfig.HttpClient.Timeout
 	if !data.Timeout.IsNull() && data.Timeout.ValueInt64() > 0 {
@@ -266,7 +266,7 @@ func (r *TcpTestResource) runTest(ctx context.Context, data *TcpTestResourceMode
 
 		if dialErr == nil {
 			// Connection successful
-			conn.Close()
+			_ = conn.Close()
 			err = nil
 			break
 		}

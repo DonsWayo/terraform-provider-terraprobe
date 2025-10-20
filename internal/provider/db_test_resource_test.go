@@ -65,7 +65,7 @@ func TestDbTestResource_runTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to set up PostgreSQL container: %v", err)
 	}
-	defer pgContainer.Close()
+	defer func() { _ = pgContainer.Close() }()
 
 	// Test PostgreSQL connection
 	t.Run("PostgreSQL connection test", func(t *testing.T) {
@@ -100,7 +100,7 @@ func TestDbTestResource_runTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to set up MySQL container: %v", err)
 	}
-	defer mysqlContainer.Close()
+	defer func() { _ = mysqlContainer.Close() }()
 
 	// Test MySQL connection
 	t.Run("MySQL connection test", func(t *testing.T) {
@@ -191,7 +191,7 @@ func TestAccDbTestResource(t *testing.T) {
 	}
 	defer func() {
 		if pgContainer != nil {
-			pgContainer.Close()
+			_ = pgContainer.Close()
 		}
 	}()
 
@@ -246,7 +246,7 @@ func setupDockerForAcceptanceTest(t *testing.T) (*dockertest.Resource, error) {
 }
 
 // Helper functions to set up test databases using Docker.
-func setupPostgres(t *testing.T) (*dockertest.Resource, string, int, error) {
+func setupPostgres(_ *testing.T) (*dockertest.Resource, string, int, error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return nil, "", 0, err
@@ -298,7 +298,7 @@ func setupPostgres(t *testing.T) (*dockertest.Resource, string, int, error) {
 	return resource, host, portInt, nil
 }
 
-func setupMySQL(t *testing.T) (*dockertest.Resource, string, int, error) {
+func setupMySQL(_ *testing.T) (*dockertest.Resource, string, int, error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return nil, "", 0, err

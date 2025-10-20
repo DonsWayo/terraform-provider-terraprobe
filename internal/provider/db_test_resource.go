@@ -380,7 +380,7 @@ func (r *DbTestResource) runTest(ctx context.Context, data *DbTestResourceModel)
 		// Ping the database to check the connection
 		pingErr := db.PingContext(timeoutCtx)
 		if pingErr != nil {
-			db.Close()
+			_ = db.Close()
 			if i < retries {
 				time.Sleep(retryDelay)
 				continue
@@ -396,7 +396,7 @@ func (r *DbTestResource) runTest(ctx context.Context, data *DbTestResourceModel)
 		queryTime = time.Since(start)
 
 		if queryErr != nil {
-			db.Close()
+			_ = db.Close()
 			if i < retries {
 				time.Sleep(retryDelay)
 				continue
@@ -413,10 +413,10 @@ func (r *DbTestResource) runTest(ctx context.Context, data *DbTestResourceModel)
 
 		// Check for errors during row iteration
 		rowErr := rows.Err()
-		rows.Close()
+		_ = rows.Close()
 
 		if rowErr != nil {
-			db.Close()
+			_ = db.Close()
 			if i < retries {
 				time.Sleep(retryDelay)
 				continue
@@ -426,7 +426,7 @@ func (r *DbTestResource) runTest(ctx context.Context, data *DbTestResourceModel)
 		}
 
 		// Close the database connection
-		db.Close()
+		_ = db.Close()
 		openErr = nil
 		break
 	}
