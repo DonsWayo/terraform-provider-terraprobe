@@ -1,5 +1,7 @@
 # Visit https://golangci-lint.run/ for usage documentation
 # and information on other useful linters
+version: "2"
+
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
@@ -12,8 +14,6 @@ linters:
     - copyloopvar
     - forcetypeassert
     - godot
-    - gofmt
-    - gosimple
     - ineffassign
     - makezero
     - misspell
@@ -24,3 +24,7 @@ linters:
     - unparam
     - unused
     - usetesting
+
+formatters:
+  enable:
+    - gofmt
