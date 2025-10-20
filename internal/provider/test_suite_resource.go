@@ -287,7 +287,7 @@ func (r *TestSuiteResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// Create a new method for evaluating DB tests
+// Create a new method for evaluating DB tests.
 func (r *TestSuiteResource) evaluateDbTests(ctx context.Context, dbTests types.Set) (int, int) {
 	if dbTests.IsNull() || dbTests.IsUnknown() {
 		return 0, 0
@@ -321,7 +321,7 @@ func (r *TestSuiteResource) evaluateDbTests(ctx context.Context, dbTests types.S
 	return passedTests, totalTests
 }
 
-// Helper methods to evaluate different test types
+// Helper methods to evaluate different test types.
 func (r *TestSuiteResource) evaluateHttpTests(ctx context.Context, httpTests types.Set) (int, int) {
 	if httpTests.IsNull() || httpTests.IsUnknown() {
 		return 0, 0

@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-// TestDnsTestResource_runTest tests the DNS test resource's runTest function
+// TestDnsTestResource_runTest tests the DNS test resource's runTest function.
 func TestDnsTestResource_runTest(t *testing.T) {
 	// Create a client config for testing
 	clientConfig := &TerraProbeClientConfig{
@@ -135,7 +135,7 @@ func TestDnsTestResource_runTest(t *testing.T) {
 	})
 }
 
-// TestAccDnsTestResource is an acceptance test for the DNS test resource
+// TestAccDnsTestResource is an acceptance test for the DNS test resource.
 func TestAccDnsTestResource(t *testing.T) {
 	// Skip in short mode as acceptance tests make real network connections
 	if testing.Short() {

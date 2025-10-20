@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-// TestHttpTestResource_runTest tests the HTTP test resource's runTest function
+// TestHttpTestResource_runTest tests the HTTP test resource's runTest function.
 func TestHttpTestResource_runTest(t *testing.T) {
 	// Create a test HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +76,7 @@ func TestHttpTestResource_runTest(t *testing.T) {
 	}
 }
 
-// TestAccHttpTestResource is an acceptance test for the HTTP test resource
+// TestAccHttpTestResource is an acceptance test for the HTTP test resource.
 func TestAccHttpTestResource(t *testing.T) {
 	// Skip in short mode as acceptance tests make real API calls
 	if testing.Short() {

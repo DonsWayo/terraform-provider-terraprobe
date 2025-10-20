@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-// TestTcpTestResource_runTest tests the TCP test resource's runTest function
+// TestTcpTestResource_runTest tests the TCP test resource's runTest function.
 func TestTcpTestResource_runTest(t *testing.T) {
 	// Set up a TCP listener
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -83,7 +83,7 @@ func TestTcpTestResource_runTest(t *testing.T) {
 	}
 }
 
-// TestAccTcpTestResource is an acceptance test for the TCP test resource
+// TestAccTcpTestResource is an acceptance test for the TCP test resource.
 func TestAccTcpTestResource(t *testing.T) {
 	// Skip in short mode as acceptance tests make real network connections
 	if testing.Short() {

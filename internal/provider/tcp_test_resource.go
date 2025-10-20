@@ -231,7 +231,7 @@ func (r *TcpTestResource) ImportState(ctx context.Context, req resource.ImportSt
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// runTest runs the TCP test and updates the resource model with the results
+// runTest runs the TCP test and updates the resource model with the results.
 func (r *TcpTestResource) runTest(ctx context.Context, data *TcpTestResourceModel) error {
 	// Get timeout from resource or default from provider
 	timeout := r.clientConfig.HttpClient.Timeout

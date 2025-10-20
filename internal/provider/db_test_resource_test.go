@@ -18,7 +18,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// TestDbTestResource_runTest tests the database test resource's runTest function
+// TestDbTestResource_runTest tests the database test resource's runTest function.
 func TestDbTestResource_runTest(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -177,7 +177,7 @@ func TestDbTestResource_runTest(t *testing.T) {
 	})
 }
 
-// TestAccDbTestResource is an acceptance test for the database test resource
+// TestAccDbTestResource is an acceptance test for the database test resource.
 func TestAccDbTestResource(t *testing.T) {
 	// Skip in short mode as acceptance tests make real network connections
 	if testing.Short() {
@@ -235,7 +235,7 @@ func TestAccDbTestResource(t *testing.T) {
 	})
 }
 
-// Helper function to set up Docker container for acceptance test
+// Helper function to set up Docker container for acceptance test.
 func setupDockerForAcceptanceTest(t *testing.T) (*dockertest.Resource, error) {
 	// Set up a PostgreSQL container for the acceptance test
 	pgContainer, _, _, err := setupPostgres(t)
@@ -245,7 +245,7 @@ func setupDockerForAcceptanceTest(t *testing.T) (*dockertest.Resource, error) {
 	return pgContainer, nil
 }
 
-// Helper functions to set up test databases using Docker
+// Helper functions to set up test databases using Docker.
 func setupPostgres(t *testing.T) (*dockertest.Resource, string, int, error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
