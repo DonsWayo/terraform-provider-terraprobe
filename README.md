@@ -1,233 +1,328 @@
-# TerraProbe - Infrastructure Testing Terraform Provider
+# TerraProbe
 
-TerraProbe is a Terraform provider that facilitates infrastructure testing directly through Terraform. It allows you to define and run automated tests for HTTP endpoints, TCP connections, DNS resolution, and more, integrating testing directly into your Terraform workflow.
+[![Go Version](https://img.shields.io/github/go-mod/go-version/DonsWayo/terraprobe?style=flat-square)](https://golang.org/doc/go1.23)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg?style=flat-square)](https://opensource.org/licenses/MPL-2.0)
+[![Go Report Card](https://goreportcard.com/badge/github.com/DonsWayo/terraprobe?style=flat-square)](https://goreportcard.com/report/github.com/DonsWayo/terraprobe)
+[![GitHub release](https://img.shields.io/github/v/release/DonsWayo/terraprobe?style=flat-square)](https://github.com/DonsWayo/terraprobe/releases)
+
+Infrastructure testing Terraform provider that validates your deployed resources are functioning correctly.
+
+## What is TerraProbe?
+
+TerraProbe lets you write infrastructure tests directly in Terraform. After deploying your infrastructure, you can verify that HTTP endpoints respond correctly, TCP ports are accessible, DNS records resolve properly, and databases are reachable.
 
 ## Features
 
-- **HTTP Testing**: Test HTTP/HTTPS endpoints for status codes, response body content, and more
-- **TCP Testing**: Test TCP connections to specified hosts and ports
-- **DNS Testing**: Test DNS resolution for various record types (A, AAAA, CNAME, MX, TXT, NS)
-- **Database Testing**: Test database connectivity and query execution for PostgreSQL and MySQL
-- **Test Suites**: Group tests together and get aggregated results
-- **Terraform Integration**: Seamlessly integrates with your existing Terraform workflows
+- **HTTP Testing**: Validate API endpoints, check status codes, verify response content
+- **TCP Testing**: Ensure services are listening on expected ports
+- **DNS Testing**: Verify domain resolution for A, AAAA, CNAME, MX, TXT, and NS records
+- **Database Testing**: Test PostgreSQL and MySQL connectivity and run validation queries
+- **Test Suites**: Group related tests and get aggregated results
+- **Retry Logic**: Built-in retry mechanisms for handling transient failures
 
-## Resources
+## Installation
 
-The TerraProbe provider includes the following resources:
-
-- `terraprobe_http_test` - Test HTTP endpoints
-- `terraprobe_tcp_test` - Test TCP connectivity
-- `terraprobe_dns_test` - Test DNS resolution
-- `terraprobe_db_test` - Test database connectivity
-- `terraprobe_test_suite` - Group multiple tests together
-
-## Usage
-
-### Provider Configuration
+### Using Terraform Registry
 
 ```hcl
-provider "terraprobe" {
-  retries = 3           # Number of retries for tests that fail (default: 3)
-  retry_delay = 5       # Delay between retries in seconds (default: 5)
-}
-```
-
-### HTTP Test
-
-```hcl
-resource "terraprobe_http_test" "example" {
-  name             = "API Health Check"
-  url              = "https://api.example.com/health"
-  method           = "GET"
-  expect_status_code = 200
-  expect_contains  = "healthy"
-  headers = {
-    "User-Agent" = "TerraProbe"
-    "Authorization" = "Bearer ${var.api_token}"
+terraform {
+  required_providers {
+    terraprobe = {
+      source  = "DonsWayo/terraprobe"
+      version = "~> 0.1"
+    }
   }
 }
 
-output "api_status" {
-  value = terraprobe_http_test.example.test_passed ? "Healthy" : "Unhealthy"
+provider "terraprobe" {
+  default_timeout     = 10
+  default_retries     = 3
+  default_retry_delay = 5
+}
+```
+
+### Building from Source
+
+```bash
+git clone https://github.com/DonsWayo/terraprobe.git
+cd terraprobe
+
+# Using Task (recommended)
+task install
+
+# Or manually
+go build -o terraform-provider-terraprobe
+mkdir -p ~/.terraform.d/plugins/registry.terraform.io/DonsWayo/terraprobe/0.1.0/$(go env GOOS)_$(go env GOARCH)/
+cp terraform-provider-terraprobe ~/.terraform.d/plugins/registry.terraform.io/DonsWayo/terraprobe/0.1.0/$(go env GOOS)_$(go env GOARCH)/
+```
+
+## Quick Start
+
+Here's a simple example that tests an API endpoint, database connection, and DNS resolution:
+
+```hcl
+# Test API endpoint
+resource "terraprobe_http_test" "api" {
+  name               = "API Health Check"
+  url                = "https://api.example.com/health"
+  expect_status_code = 200
+  expect_contains    = "healthy"
+}
+
+# Test database port
+resource "terraprobe_tcp_test" "database" {
+  name = "PostgreSQL Port"
+  host = "db.example.com"
+  port = 5432
+}
+
+# Test DNS resolution
+resource "terraprobe_dns_test" "website" {
+  name        = "Website DNS"
+  hostname    = "www.example.com"
+  record_type = "A"
+}
+
+# Group tests together
+resource "terraprobe_test_suite" "production" {
+  name        = "Production Tests"
+  description = "All production environment tests"
+
+  http_tests = [terraprobe_http_test.api.id]
+  tcp_tests  = [terraprobe_tcp_test.database.id]
+  dns_tests  = [terraprobe_dns_test.website.id]
+}
+
+# Check results
+output "test_results" {
+  value = {
+    passed = terraprobe_test_suite.production.all_passed
+    summary = "${terraprobe_test_suite.production.passed_count}/${terraprobe_test_suite.production.total_count} tests passed"
+  }
+}
+```
+
+## Resource Documentation
+
+### HTTP Test
+
+Tests HTTP/HTTPS endpoints with various validation options.
+
+```hcl
+resource "terraprobe_http_test" "example" {
+  name               = "API Test"
+  url                = "https://api.example.com/v1/status"
+  method             = "GET"                    # GET, POST, PUT, DELETE, etc.
+  expect_status_code = 200
+  expect_contains    = "operational"            # Optional: string to find in response
+  timeout            = 30                       # Optional: override default timeout
+  retries            = 5                        # Optional: override default retries
+
+  headers = {
+    "Authorization" = "Bearer ${var.api_token}"
+    "Content-Type"  = "application/json"
+  }
+
+  body = jsonencode({                          # Optional: request body
+    test = true
+  })
 }
 ```
 
 ### TCP Test
 
+Verifies TCP connectivity to services.
+
 ```hcl
 resource "terraprobe_tcp_test" "example" {
-  name = "Database Connection"
-  host = "db.example.com"
-  port = 5432
-}
-
-output "db_status" {
-  value = terraprobe_tcp_test.example.test_passed ? "Connected" : "Failed"
+  name    = "Redis Connection"
+  host    = "cache.example.com"
+  port    = 6379
+  timeout = 10
+  retries = 3
 }
 ```
 
 ### DNS Test
 
+Validates DNS resolution and record values.
+
 ```hcl
 resource "terraprobe_dns_test" "example" {
-  name        = "Domain Resolution Check"
-  hostname    = "example.com"
-  record_type = "A"            # Supports A, AAAA, CNAME, MX, TXT, NS
-  
-  # Optional: Specify an expected result
-  expect_result = "93.184.216.34"
-  
-  # Optional: Use a specific DNS resolver
-  resolver = "8.8.8.8"
-}
-
-output "dns_status" {
-  value = {
-    resolved = terraprobe_dns_test.example.test_passed
-    ip_addresses = terraprobe_dns_test.example.last_result
-    query_time_ms = terraprobe_dns_test.example.last_result_time
-  }
+  name          = "Mail Server DNS"
+  hostname      = "mail.example.com"
+  record_type   = "MX"                    # A, AAAA, CNAME, MX, TXT, NS
+  expect_result = "10 mail.example.com."  # Optional: expected value
+  resolver      = "1.1.1.1"               # Optional: custom DNS server
+  timeout       = 5
 }
 ```
 
 ### Database Test
 
-The database test resource (`terraprobe_db_test`) allows you to test connectivity and query execution against various database engines.
+Tests database connectivity and executes validation queries.
 
 ```hcl
-resource "terraprobe_db_test" "postgres_test" {
-  name     = "PostgreSQL Database Test"
-  type     = "postgres"  # Supported types: postgres, mysql
+resource "terraprobe_db_test" "postgres" {
+  name     = "PostgreSQL Test"
+  type     = "postgres"              # postgres or mysql
   host     = "db.example.com"
   port     = 5432
-  username = "dbuser"
-  password = "dbpassword"
-  database = "mydb"
-  query    = "SELECT 1"  # Optional query to execute
-  ssl_mode = "disable"   # For PostgreSQL: disable, require, verify-ca, verify-full
-  
-  # Connection pool settings (optional)
-  max_lifetime = 1800    # Maximum connection lifetime in seconds
-  max_idle_conn = 10     # Maximum idle connections in the pool
-  max_open_conn = 100    # Maximum open connections
-  
-  # Retry settings (optional)
-  timeout    = 10
-  retries    = 3
-  retry_delay = 5
+  database = "myapp"
+  username = var.db_user
+  password = var.db_password
+  ssl_mode = "require"               # disable, require, verify-ca, verify-full
+
+  query = "SELECT COUNT(*) FROM users WHERE active = true"
+
+  # Connection pool settings
+  max_open_conn = 25
+  max_idle_conn = 5
+  max_lifetime  = 300
 }
 
-output "db_test_result" {
-  value = {
-    passed = terraprobe_db_test.postgres_test.test_passed
-    rows = terraprobe_db_test.postgres_test.last_result_rows
-    query_time = terraprobe_db_test.postgres_test.last_query_time
-    error = terraprobe_db_test.postgres_test.error
-  }
+resource "terraprobe_db_test" "mysql" {
+  name     = "MySQL Test"
+  type     = "mysql"
+  host     = "mysql.example.com"
+  port     = 3306
+  database = "myapp"
+  username = var.mysql_user
+  password = var.mysql_password
+
+  query = "SELECT VERSION()"
 }
 ```
-
-The resource provides the following attributes:
-
-- `test_passed`: Boolean indicating if the test passed
-- `last_run`: Timestamp of the last test run
-- `last_query_time`: Duration in milliseconds the query took to execute
-- `last_result_rows`: Number of rows returned by the query
-- `error`: Error message if the test failed
 
 ### Test Suite
 
+Groups multiple tests for organized results.
+
 ```hcl
-resource "terraprobe_test_suite" "all_tests" {
-  name = "System Health Checks"
-  description = "Tests for all critical system components"
-  
+resource "terraprobe_test_suite" "production" {
+  name        = "Production Environment"
+  description = "All production tests"
+
   http_tests = [
     terraprobe_http_test.api.id,
-    terraprobe_http_test.website.id
+    terraprobe_http_test.website.id,
   ]
-  
+
   tcp_tests = [
     terraprobe_tcp_test.database.id,
-    terraprobe_tcp_test.redis.id
+    terraprobe_tcp_test.cache.id,
   ]
-  
-  dns_tests = [
-    terraprobe_dns_test.example.id
-  ]
-  
-  db_tests = [
-    terraprobe_db_test.postgres_test.id,
-    terraprobe_db_test.mysql_test.id
-  ]
-}
 
-output "system_health" {
-  value = {
-    passing = terraprobe_test_suite.all_tests.passed_count
-    failing = terraprobe_test_suite.all_tests.failed_count
-    all_healthy = terraprobe_test_suite.all_tests.all_passed
-  }
+  dns_tests = [
+    terraprobe_dns_test.api.id,
+    terraprobe_dns_test.cdn.id,
+  ]
+
+  db_tests = [
+    terraprobe_db_test.postgres.id,
+    terraprobe_db_test.mysql.id,
+  ]
 }
 ```
+
+## Output Attributes
+
+All test resources provide these attributes:
+
+- `test_passed` - Boolean indicating if the test passed
+- `last_run` - Timestamp of last test execution
+- `error` - Error message if test failed
+
+Additional attributes by test type:
+- HTTP: `last_response_time`, `last_status_code`, `last_response_body`
+- TCP: `last_connect_time`
+- DNS: `last_result`, `last_result_time`
+- Database: `last_query_time`, `last_result_rows`
 
 ## Development
 
 ### Requirements
 
-- [Go](https://golang.org/doc/install) 1.18+ (to build the provider plugin)
-- [Terraform](https://www.terraform.io/downloads.html) 0.14.x+
-- [Docker](https://docs.docker.com/get-docker/) (for database tests)
+- Go 1.23+
+- Terraform 0.14+
+- Docker (for database tests)
+- [Task](https://taskfile.dev) (optional, for automation)
 
-### Building the Provider
+### Building
 
-1. Clone the repository
-2. Build the provider
-   ```shell
-   go build -o terraform-provider-terraprobe
-   ```
-3. Install the provider locally (for testing)
-   ```shell
-   mkdir -p ~/.terraform.d/plugins/registry.terraform.io/hashicorp/terraprobe/0.1.0/$(go env GOOS)_$(go env GOARCH)/
-   cp terraform-provider-terraprobe ~/.terraform.d/plugins/registry.terraform.io/hashicorp/terraprobe/0.1.0/$(go env GOOS)_$(go env GOARCH)/
-   ```
+```bash
+# Using Task
+task build
+
+# Manually
+go build -o terraform-provider-terraprobe
+```
 
 ### Testing
 
-#### Docker for Testing
+```bash
+# All tests with Task
+task test:all
 
-Database tests automatically use Docker containers for unit tests. During development and testing:
+# Unit tests only
+task test:unit
 
-- Unit tests will spin up temporary PostgreSQL and MySQL containers
-- The containers are automatically removed after tests complete
-- No manual setup of databases is required
-- Docker must be installed and running for database tests to execute properly
+# Integration tests (requires Docker)
+task test:integration
 
-#### Run Unit Tests
-
-```shell
-go test ./internal/provider/... -v
+# Manual testing
+go test -v ./internal/provider/...
 ```
 
-#### Run the Test Configuration
+### Task Commands
 
-```shell
-# From the root directory
-cd test-config
-./run-test.sh --all
+```bash
+task --list                  # List all available tasks
+task build                   # Build the provider
+task install                 # Build and install locally
+task test:unit              # Run unit tests
+task test:integration       # Run integration tests with databases
+task lint                   # Run linters
+task fmt                    # Format code
+task db:start               # Start test database containers
+task db:stop                # Stop database containers
+task clean                  # Clean build artifacts
 ```
 
-The `run-test.sh` script supports the following options:
-- `--test`: Run Terraform to test the provider
-- `--unit`: Run unit tests only
-- `--all`: Run both unit tests and Terraform tests
+## Provider Configuration
 
-The script will check for Docker availability and alert you if Docker is not available, which may affect database tests.
+```hcl
+provider "terraprobe" {
+  default_timeout     = 10    # Default timeout in seconds for all tests
+  default_retries     = 3     # Number of retry attempts
+  default_retry_delay = 5     # Seconds between retries
+  user_agent          = "TerraProbe/1.0"  # User agent for HTTP tests
+}
+```
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/new-feature`)
+3. Commit your changes (`git commit -m 'Add new feature'`)
+4. Push to the branch (`git push origin feature/new-feature`)
+5. Create a Pull Request
+
+We use conventional commits:
+- `feat:` New features
+- `fix:` Bug fixes
+- `docs:` Documentation changes
+- `test:` Test additions or fixes
+- `chore:` Maintenance tasks
 
 ## License
 
-This project is licensed under the Mozilla Public License 2.0 - see the LICENSE file for details.
+This project is licensed under the Mozilla Public License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+- [Issues](https://github.com/DonsWayo/terraprobe/issues)
+- [Discussions](https://github.com/DonsWayo/terraprobe/discussions)
+- [Wiki](https://github.com/DonsWayo/terraprobe/wiki)
