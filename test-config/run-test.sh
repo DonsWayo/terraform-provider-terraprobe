@@ -78,8 +78,13 @@ if [ $BUILD_EXIT_CODE -ne 0 ]; then
   exit $BUILD_EXIT_CODE
 fi
 
+# Detect platform dynamically for CI/CD compatibility
+GOOS=$(go env GOOS)
+GOARCH=$(go env GOARCH)
+echo "Detected platform: ${GOOS}/${GOARCH}"
+
 # Create directories for the terraform plugin if they don't exist
-PLUGIN_DIR=~/.terraform.d/plugins/registry.terraform.io/hashicorp/terraprobe/0.1.0/darwin_amd64/
+PLUGIN_DIR=~/.terraform.d/plugins/registry.terraform.io/hashicorp/terraprobe/0.1.0/${GOOS}_${GOARCH}/
 mkdir -p $PLUGIN_DIR
 
 # Copy the provider to the plugin directory
