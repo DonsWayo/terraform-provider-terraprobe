@@ -269,7 +269,7 @@ func (r *HttpTestResource) ImportState(ctx context.Context, req resource.ImportS
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// runTest runs the HTTP test and updates the resource model with the results
+// runTest runs the HTTP test and updates the resource model with the results.
 func (r *HttpTestResource) runTest(ctx context.Context, data *HttpTestResourceModel) error {
 	// Get timeout from resource or default from provider
 	timeout := r.clientConfig.HttpClient.Timeout

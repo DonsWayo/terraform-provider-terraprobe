@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	// Database drivers
+	// Database drivers.
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 
@@ -300,7 +300,7 @@ func (r *DbTestResource) ImportState(ctx context.Context, req resource.ImportSta
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// runTest performs the database test
+// runTest performs the database test.
 func (r *DbTestResource) runTest(ctx context.Context, data *DbTestResourceModel) error {
 	// Get timeout from resource or default from provider
 	timeout := time.Second * 10
