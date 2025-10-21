@@ -1,6 +1,7 @@
 # TerraProbe
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/DonsWayo/terraprobe?style=flat-square)](https://golang.org/doc/go1.23)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/DonsWayo/terraprobe?style=flat-square)](https://golang.org/doc/go1.25)
+[![Terraform Registry](https://img.shields.io/badge/registry-terraform.io-blue?style=flat-square)](https://registry.terraform.io/namespaces/DonsWayo)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg?style=flat-square)](https://opensource.org/licenses/MPL-2.0)
 [![Go Report Card](https://goreportcard.com/badge/github.com/DonsWayo/terraprobe?style=flat-square)](https://goreportcard.com/report/github.com/DonsWayo/terraprobe)
 [![GitHub release](https://img.shields.io/github/v/release/DonsWayo/terraprobe?style=flat-square)](https://github.com/DonsWayo/terraprobe/releases)
@@ -243,8 +244,8 @@ Additional attributes by test type:
 
 ### Requirements
 
-- Go 1.23+
-- Terraform 0.14+
+- Go 1.25+
+- Terraform 1.13+ or OpenTofu 1.10+
 - Docker (for database tests)
 - [Task](https://taskfile.dev) (optional, for automation)
 
@@ -319,7 +320,7 @@ We use conventional commits:
 
 ## License
 
-This project is licensed under the Mozilla Public License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Mozilla Public License 2.0 - Copyright (c) 2025 Juan Jose Caracedo - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
