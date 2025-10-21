@@ -112,7 +112,7 @@ func (p *TerraProbeProvider) Configure(ctx context.Context, req provider.Configu
 	resp.ResourceData = clientConfig
 }
 
-// TerraProbeClientConfig contains the provider-level configuration for client operations
+// TerraProbeClientConfig contains the provider-level configuration for client operations.
 type TerraProbeClientConfig struct {
 	HttpClient *http.Client
 	UserAgent  string

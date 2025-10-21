@@ -18,7 +18,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// TestDbTestResource_runTest tests the database test resource's runTest function
+// TestDbTestResource_runTest tests the database test resource's runTest function.
 func TestDbTestResource_runTest(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -65,7 +65,7 @@ func TestDbTestResource_runTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to set up PostgreSQL container: %v", err)
 	}
-	defer pgContainer.Close()
+	defer func() { _ = pgContainer.Close() }()
 
 	// Test PostgreSQL connection
 	t.Run("PostgreSQL connection test", func(t *testing.T) {
@@ -100,7 +100,7 @@ func TestDbTestResource_runTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to set up MySQL container: %v", err)
 	}
-	defer mysqlContainer.Close()
+	defer func() { _ = mysqlContainer.Close() }()
 
 	// Test MySQL connection
 	t.Run("MySQL connection test", func(t *testing.T) {
@@ -177,7 +177,7 @@ func TestDbTestResource_runTest(t *testing.T) {
 	})
 }
 
-// TestAccDbTestResource is an acceptance test for the database test resource
+// TestAccDbTestResource is an acceptance test for the database test resource.
 func TestAccDbTestResource(t *testing.T) {
 	// Skip in short mode as acceptance tests make real network connections
 	if testing.Short() {
@@ -191,7 +191,7 @@ func TestAccDbTestResource(t *testing.T) {
 	}
 	defer func() {
 		if pgContainer != nil {
-			pgContainer.Close()
+			_ = pgContainer.Close()
 		}
 	}()
 
@@ -222,12 +222,14 @@ func TestAccDbTestResource(t *testing.T) {
 					// Try to connect to local PostgreSQL to see if it's available
 					db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=postgres sslmode=disable")
 					if err != nil {
+						//nolint:nilerr
 						return true, nil // Skip if we can't connect
 					}
 
 					err = db.Ping()
-					db.Close()
+					_ = db.Close()
 
+					//nolint:nilerr
 					return err != nil, nil // Skip if ping fails
 				},
 			},
@@ -235,7 +237,7 @@ func TestAccDbTestResource(t *testing.T) {
 	})
 }
 
-// Helper function to set up Docker container for acceptance test
+// Helper function to set up Docker container for acceptance test.
 func setupDockerForAcceptanceTest(t *testing.T) (*dockertest.Resource, error) {
 	// Set up a PostgreSQL container for the acceptance test
 	pgContainer, _, _, err := setupPostgres(t)
@@ -245,8 +247,8 @@ func setupDockerForAcceptanceTest(t *testing.T) (*dockertest.Resource, error) {
 	return pgContainer, nil
 }
 
-// Helper functions to set up test databases using Docker
-func setupPostgres(t *testing.T) (*dockertest.Resource, string, int, error) {
+// Helper functions to set up test databases using Docker.
+func setupPostgres(_ *testing.T) (*dockertest.Resource, string, int, error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return nil, "", 0, err
@@ -298,7 +300,7 @@ func setupPostgres(t *testing.T) (*dockertest.Resource, string, int, error) {
 	return resource, host, portInt, nil
 }
 
-func setupMySQL(t *testing.T) (*dockertest.Resource, string, int, error) {
+func setupMySQL(_ *testing.T) (*dockertest.Resource, string, int, error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return nil, "", 0, err

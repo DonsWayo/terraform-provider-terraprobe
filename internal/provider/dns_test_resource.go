@@ -246,6 +246,9 @@ func (r *DnsTestResource) ImportState(ctx context.Context, req resource.ImportSt
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+// runTest performs the DNS lookup test.
+//
+//nolint:unparam
 func (r *DnsTestResource) runTest(ctx context.Context, data *DnsTestResourceModel) error {
 	// Get timeout from resource or default from provider
 	timeout := time.Second * 5

@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"strconv"
@@ -13,14 +14,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-// TestTcpTestResource_runTest tests the TCP test resource's runTest function
+// TestTcpTestResource_runTest tests the TCP test resource's runTest function.
 func TestTcpTestResource_runTest(t *testing.T) {
 	// Set up a TCP listener
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("failed to set up TCP listener: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	// Start a goroutine to handle connections
 	go func() {
@@ -29,7 +30,7 @@ func TestTcpTestResource_runTest(t *testing.T) {
 			if err != nil {
 				return
 			}
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 
@@ -61,7 +62,8 @@ func TestTcpTestResource_runTest(t *testing.T) {
 	}
 
 	// Run the test
-	err = resource.runTest(nil, model)
+	ctx := context.Background()
+	err = resource.runTest(ctx, model)
 	if err != nil {
 		t.Fatalf("runTest failed: %v", err)
 	}
@@ -73,7 +75,7 @@ func TestTcpTestResource_runTest(t *testing.T) {
 
 	// Test with failing condition - wrong port
 	model.Port = types.Int64Value(1) // Use a port that's unlikely to be listening
-	err = resource.runTest(nil, model)
+	err = resource.runTest(ctx, model)
 	if err != nil {
 		t.Fatalf("runTest failed: %v", err)
 	}
@@ -83,7 +85,7 @@ func TestTcpTestResource_runTest(t *testing.T) {
 	}
 }
 
-// TestAccTcpTestResource is an acceptance test for the TCP test resource
+// TestAccTcpTestResource is an acceptance test for the TCP test resource.
 func TestAccTcpTestResource(t *testing.T) {
 	// Skip in short mode as acceptance tests make real network connections
 	if testing.Short() {

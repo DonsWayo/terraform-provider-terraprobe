@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-// TestTestSuiteResource_Results tests the calculation of test suite results
+// TestTestSuiteResource_Results tests the calculation of test suite results.
 func TestTestSuiteResource_Results(t *testing.T) {
 	// Create a model with test resources
 	model := &TestSuiteResourceModel{
@@ -67,7 +67,7 @@ func TestTestSuiteResource_Results(t *testing.T) {
 	}
 }
 
-// TestAccTestSuiteResource is an acceptance test for the test suite resource
+// TestAccTestSuiteResource is an acceptance test for the test suite resource.
 func TestAccTestSuiteResource(t *testing.T) {
 	// Skip in short mode as acceptance tests make real network connections
 	if testing.Short() {
