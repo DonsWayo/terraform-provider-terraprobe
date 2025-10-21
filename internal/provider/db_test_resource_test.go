@@ -222,13 +222,15 @@ func TestAccDbTestResource(t *testing.T) {
 					// Try to connect to local PostgreSQL to see if it's available
 					db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=postgres sslmode=disable")
 					if err != nil {
-						return true, err
+						//nolint:nilerr
+						return true, nil // Skip if we can't connect
 					}
 
 					err = db.Ping()
 					_ = db.Close()
 
-					return err != nil, err
+					//nolint:nilerr
+					return err != nil, nil // Skip if ping fails
 				},
 			},
 		},
