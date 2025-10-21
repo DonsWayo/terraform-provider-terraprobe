@@ -1,4 +1,4 @@
-## 0.2.0 (Unreleased)
+## 0.2.0 (2025-10-21)
 
 IMPROVEMENTS:
 
@@ -10,6 +10,8 @@ IMPROVEMENTS:
 * docker-cli 28.5.1, docker 28.5.1
 * terraform-plugin-sdk/v2 2.38.1
 * Enhanced security and stability updates across dependencies
+* GPG signing enabled for all releases
+* Repository renamed to terraform-provider-terraprobe for Terraform Registry compliance
 
 ## 0.1.0 (2025-10-21)
 
