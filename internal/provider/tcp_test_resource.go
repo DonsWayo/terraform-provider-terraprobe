@@ -232,6 +232,8 @@ func (r *TcpTestResource) ImportState(ctx context.Context, req resource.ImportSt
 }
 
 // runTest runs the TCP test and updates the resource model with the results.
+//
+//nolint:unparam
 func (r *TcpTestResource) runTest(_ context.Context, data *TcpTestResourceModel) error {
 	// Get timeout from resource or default from provider
 	timeout := r.clientConfig.HttpClient.Timeout
