@@ -1,7 +1,8 @@
 terraform {
   required_providers {
     terraprobe = {
-      source = "hashicorp/terraprobe"
+      source = "DonsWayo/terraprobe"
+      version = "~> 0.2"
     }
   }
   required_version = ">= 1.1.0"
