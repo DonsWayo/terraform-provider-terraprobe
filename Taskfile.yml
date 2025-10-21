@@ -5,8 +5,10 @@ vars:
     sh: go env GOOS
   GOARCH:
     sh: go env GOARCH
+  VERSION:
+    sh: git describe --tags --abbrev=0 2>/dev/null || echo "dev"
   PROVIDER_NAME: terraform-provider-terraprobe
-  PLUGIN_DIR: '{{.HOME}}/.terraform.d/plugins/registry.terraform.io/hashicorp/terraprobe/0.1.0/{{.GOOS}}_{{.GOARCH}}'
+  PLUGIN_DIR: '{{.HOME}}/.terraform.d/plugins/registry.terraform.io/DonsWayo/terraprobe/{{.VERSION}}/{{.GOOS}}_{{.GOARCH}}'
   TEST_CONFIG_DIR: test-config
 
 tasks:

@@ -1,3 +1,12 @@
+## 0.2.1 (2025-10-21)
+
+BUG FIXES:
+
+* Fixed incorrect provider source in documentation (was `hashicorp/terraprobe`, now correctly `DonsWayo/terraprobe`)
+* Fixed incorrect provider source in examples
+* Removed obsolete scaffolding examples
+* Added provider description to terraform-registry-manifest.json for better registry display
+
 ## 0.2.0 (2025-10-21)
 
 IMPROVEMENTS:

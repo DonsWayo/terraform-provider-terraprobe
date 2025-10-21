@@ -2,5 +2,6 @@
     "version": 1,
     "metadata": {
         "protocol_versions": ["6.0"]
-    }
+    },
+    "description": "Infrastructure testing Terraform provider for validating deployed resources - HTTP endpoints, TCP connections, DNS records, and database connectivity"
 }
