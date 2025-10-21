@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2025 Juan Jose Caracedo
 // SPDX-License-Identifier: MPL-2.0
 
 package main
@@ -9,7 +9,7 @@ import (
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/hashicorp/terraform-provider-terraprobe/internal/provider"
+	"github.com/DonsWayo/terraform-provider-terraprobe/internal/provider"
 )
 
 var (
@@ -28,8 +28,8 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		// Update the provider address with the actual provider name
-		Address: "registry.terraform.io/hashicorp/terraprobe",
+		// Provider address for Terraform Registry
+		Address: "registry.terraform.io/DonsWayo/terraprobe",
 		Debug:   debug,
 	}
 

@@ -1,6 +1,6 @@
-module github.com/hashicorp/terraform-provider-terraprobe
+module github.com/DonsWayo/terraform-provider-terraprobe
 
-go 1.24.0
+go 1.25.3
 
 require (
 	github.com/go-sql-driver/mysql v1.9.3
