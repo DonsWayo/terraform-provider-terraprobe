@@ -24,6 +24,7 @@ Test suite resource that groups multiple tests and provides aggregate results
 - `db_tests` (Set of String) List of database test IDs to include in the suite
 - `description` (String) Description of the test suite
 - `dns_tests` (Set of String) List of DNS test IDs to include in the suite
+- `hard_fail` (Boolean) If true, the resource returns an error (failing `terraform apply`) whenever the suite's aggregate result has any failed tests. Defaults to false.
 - `http_tests` (Set of String) List of HTTP test IDs to include in the suite
 - `tcp_tests` (Set of String) List of TCP test IDs to include in the suite
 

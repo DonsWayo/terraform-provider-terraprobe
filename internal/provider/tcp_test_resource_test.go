@@ -2,12 +2,15 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
+	"regexp"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -85,6 +88,40 @@ func TestTcpTestResource_runTest(t *testing.T) {
 	}
 }
 
+// TestTcpHardFailDiagnostic verifies that hard_fail only adds an error when
+// the test did not pass.
+func TestTcpHardFailDiagnostic(t *testing.T) {
+	cases := []struct {
+		name       string
+		hardFail   bool
+		testPassed bool
+		wantErr    bool
+	}{
+		{"hard_fail off + failed", false, false, false},
+		{"hard_fail off + passed", false, true, false},
+		{"hard_fail on + passed", true, true, false},
+		{"hard_fail on + failed", true, false, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var diags diag.Diagnostics
+			data := &TcpTestResourceModel{
+				Name:       types.StringValue("probe"),
+				Host:       types.StringValue("127.0.0.1"),
+				Port:       types.Int64Value(22),
+				HardFail:   types.BoolValue(tc.hardFail),
+				TestPassed: types.BoolValue(tc.testPassed),
+				Error:      types.StringValue("connection refused"),
+			}
+			addTcpHardFailDiagnostic(&diags, data)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Fatalf("HasError()=%v, want %v (diags: %v)", got, tc.wantErr, diags.Errors())
+			}
+		})
+	}
+}
+
 // TestAccTcpTestResource is an acceptance test for the TCP test resource.
 func TestAccTcpTestResource(t *testing.T) {
 	// Skip in short mode as acceptance tests make real network connections
@@ -100,7 +137,7 @@ func TestAccTcpTestResource(t *testing.T) {
 			{
 				Config: `
 				provider "terraprobe" {}
-				
+
 				resource "terraprobe_tcp_test" "test" {
 				  name = "DNS Check"
 				  host = "8.8.8.8"
@@ -110,6 +147,61 @@ func TestAccTcpTestResource(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("terraprobe_tcp_test.test", "test_passed", "true"),
 				),
+			},
+		},
+	})
+}
+
+// TestAccTcpTestResource_HardFail verifies that hard_fail=true propagates
+// through terraform apply: passing tests succeed, failing tests raise an error.
+func TestAccTcpTestResource_HardFail(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping acceptance test in short mode")
+	}
+
+	// Bind a listener only so we know a port that is guaranteed free when closed.
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to allocate free port: %v", err)
+	}
+	host, portStr, _ := net.SplitHostPort(listener.Addr().String())
+	_ = listener.Close()
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
+			"terraprobe": providerserver.NewProtocol6WithError(New("test")()),
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: `
+				provider "terraprobe" {}
+
+				resource "terraprobe_tcp_test" "test" {
+				  name      = "DNS Check"
+				  host      = "8.8.8.8"
+				  port      = 53
+				  hard_fail = true
+				}
+				`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("terraprobe_tcp_test.test", "test_passed", "true"),
+					resource.TestCheckResourceAttr("terraprobe_tcp_test.test", "hard_fail", "true"),
+				),
+			},
+			{
+				Config: fmt.Sprintf(`
+				provider "terraprobe" {}
+
+				resource "terraprobe_tcp_test" "test" {
+				  name        = "Unreachable"
+				  host        = %q
+				  port        = %s
+				  retries     = 0
+				  timeout     = 1
+				  hard_fail   = true
+				}
+				`, host, portStr),
+				ExpectError: regexp.MustCompile(`hard_fail enabled`),
 			},
 		},
 	})

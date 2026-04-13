@@ -9,6 +9,15 @@ resource "terraprobe_tcp_test" "database_connection" {
   retry_delay = 2
 }
 
+# Hard fail: force `terraform apply` to fail if the probe does not pass
+# after exhausting all retries.
+resource "terraprobe_tcp_test" "ssh_must_be_up" {
+  name      = "SSH must be up"
+  host      = "127.0.0.1"
+  port      = 22
+  hard_fail = true
+}
+
 # Using interpolation with other resources
 resource "terraprobe_tcp_test" "redis_connection" {
   name = "Redis Connection Test"

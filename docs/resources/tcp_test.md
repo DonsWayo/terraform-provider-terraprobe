@@ -23,6 +23,7 @@ TCP test resource that validates TCP connectivity to a host and port
 
 ### Optional
 
+- `hard_fail` (Boolean) If true, the resource returns an error (failing `terraform apply`) when the test does not pass after exhausting all retries. Defaults to false, which preserves the existing behaviour of recording the failure in `test_passed` and `error`.
 - `retries` (Number) Number of retries for the connection attempt
 - `retry_delay` (Number) Delay between retries in seconds
 - `timeout` (Number) Timeout in seconds for the connection attempt

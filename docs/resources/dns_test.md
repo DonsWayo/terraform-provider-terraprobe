@@ -24,6 +24,7 @@ DNS test resource that validates DNS resolution
 ### Optional
 
 - `expect_result` (String) Expected result in the DNS response (IP address, hostname, etc.)
+- `hard_fail` (Boolean) If true, the resource returns an error (failing `terraform apply`) when the test does not pass after exhausting all retries. Defaults to false, which preserves the existing behaviour of recording the failure in `test_passed` and `error`.
 - `resolver` (String) DNS resolver to use (e.g., 8.8.8.8, 1.1.1.1)
 - `retries` (Number) Number of retries for the DNS query
 - `retry_delay` (Number) Delay between retries in seconds

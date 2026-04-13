@@ -10,9 +10,11 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -47,6 +49,7 @@ type DbTestResourceModel struct {
 	Timeout    types.Int64  `tfsdk:"timeout"`
 	Retries    types.Int64  `tfsdk:"retries"`
 	RetryDelay types.Int64  `tfsdk:"retry_delay"`
+	HardFail   types.Bool   `tfsdk:"hard_fail"`
 	Id         types.String `tfsdk:"id"`
 
 	// Additional connection options
@@ -125,6 +128,12 @@ func (r *DbTestResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Optional:            true,
 				Computed:            true,
 				Default:             int64default.StaticInt64(0), // 0 means use provider default
+			},
+			"hard_fail": schema.BoolAttribute{
+				MarkdownDescription: "If true, the resource returns an error (failing `terraform apply`) when the test does not pass after exhausting all retries. Defaults to false, which preserves the existing behaviour of recording the failure in `test_passed` and `error`.",
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(false),
 			},
 			"ssl_mode": schema.StringAttribute{
 				MarkdownDescription: "SSL mode for the database connection (disable, require, verify-ca, verify-full)",
@@ -232,6 +241,8 @@ func (r *DbTestResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addDbHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *DbTestResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -256,6 +267,8 @@ func (r *DbTestResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addDbHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *DbTestResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -280,6 +293,8 @@ func (r *DbTestResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addDbHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *DbTestResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -447,4 +462,16 @@ func (r *DbTestResource) runTest(ctx context.Context, data *DbTestResourceModel)
 	data.Error = types.StringValue("")
 
 	return nil
+}
+
+func addDbHardFailDiagnostic(diags *diag.Diagnostics, data *DbTestResourceModel) {
+	if !data.HardFail.ValueBool() || data.TestPassed.ValueBool() {
+		return
+	}
+	diags.AddError(
+		fmt.Sprintf("Database test %q failed with hard_fail enabled", data.Name.ValueString()),
+		fmt.Sprintf("%s test against %s:%d/%s did not pass after all retries: %s",
+			data.Type.ValueString(), data.Host.ValueString(), data.Port.ValueInt64(),
+			data.Database.ValueString(), data.Error.ValueString()),
+	)
 }

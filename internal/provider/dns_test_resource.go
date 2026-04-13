@@ -6,9 +6,11 @@ import (
 	"net"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -39,6 +41,7 @@ type DnsTestResourceModel struct {
 	Timeout      types.Int64  `tfsdk:"timeout"`
 	Retries      types.Int64  `tfsdk:"retries"`
 	RetryDelay   types.Int64  `tfsdk:"retry_delay"`
+	HardFail     types.Bool   `tfsdk:"hard_fail"`
 	Id           types.String `tfsdk:"id"`
 
 	// Results
@@ -95,6 +98,12 @@ func (r *DnsTestResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				Default:             int64default.StaticInt64(0), // 0 means use provider default
+			},
+			"hard_fail": schema.BoolAttribute{
+				MarkdownDescription: "If true, the resource returns an error (failing `terraform apply`) when the test does not pass after exhausting all retries. Defaults to false, which preserves the existing behaviour of recording the failure in `test_passed` and `error`.",
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(false),
 			},
 
 			// Results - these are computed values based on the last test run
@@ -178,6 +187,8 @@ func (r *DnsTestResource) Create(ctx context.Context, req resource.CreateRequest
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addDnsHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *DnsTestResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -202,6 +213,8 @@ func (r *DnsTestResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addDnsHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *DnsTestResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -226,6 +239,8 @@ func (r *DnsTestResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addDnsHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *DnsTestResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -406,4 +421,15 @@ func (r *DnsTestResource) runTest(ctx context.Context, data *DnsTestResourceMode
 	}
 
 	return nil
+}
+
+func addDnsHardFailDiagnostic(diags *diag.Diagnostics, data *DnsTestResourceModel) {
+	if !data.HardFail.ValueBool() || data.TestPassed.ValueBool() {
+		return
+	}
+	diags.AddError(
+		fmt.Sprintf("DNS test %q failed with hard_fail enabled", data.Name.ValueString()),
+		fmt.Sprintf("DNS %s lookup for %s did not pass after all retries: %s",
+			data.RecordType.ValueString(), data.Hostname.ValueString(), data.Error.ValueString()),
+	)
 }

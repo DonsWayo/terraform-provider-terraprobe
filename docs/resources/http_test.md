@@ -25,6 +25,7 @@ HTTP test resource that validates a HTTP endpoint
 - `body` (String) Request body for POST, PUT, etc.
 - `expect_contains` (String) String to look for in the response body
 - `expect_status_code` (Number) Expected HTTP status code
+- `hard_fail` (Boolean) If true, the resource returns an error (failing `terraform apply`) when the test does not pass after exhausting all retries. Defaults to false, which preserves the existing behaviour of recording the failure in `test_passed` and `error`.
 - `headers` (Map of String) HTTP headers to include in the request
 - `method` (String) HTTP method to use (GET, POST, PUT, DELETE, etc.)
 - `retries` (Number) Number of retries for the HTTP request
