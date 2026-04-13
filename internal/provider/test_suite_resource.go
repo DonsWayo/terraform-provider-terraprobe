@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -39,6 +41,7 @@ type TestSuiteResourceModel struct {
 	TcpTests    types.Set    `tfsdk:"tcp_tests"`
 	DnsTests    types.Set    `tfsdk:"dns_tests"`
 	DbTests     types.Set    `tfsdk:"db_tests"`
+	HardFail    types.Bool   `tfsdk:"hard_fail"`
 	Id          types.String `tfsdk:"id"`
 
 	// Results
@@ -86,6 +89,12 @@ func (r *TestSuiteResource) Schema(ctx context.Context, req resource.SchemaReque
 				MarkdownDescription: "List of database test IDs to include in the suite",
 				ElementType:         types.StringType,
 				Optional:            true,
+			},
+			"hard_fail": schema.BoolAttribute{
+				MarkdownDescription: "If true, the resource returns an error (failing `terraform apply`) whenever the suite's aggregate result has any failed tests. Defaults to false.",
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(false),
 			},
 
 			// Results - these are computed values based on the last test run
@@ -187,6 +196,8 @@ func (r *TestSuiteResource) Create(ctx context.Context, req resource.CreateReque
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addTestSuiteHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *TestSuiteResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -227,6 +238,8 @@ func (r *TestSuiteResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addTestSuiteHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *TestSuiteResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -267,6 +280,8 @@ func (r *TestSuiteResource) Update(ctx context.Context, req resource.UpdateReque
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addTestSuiteHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *TestSuiteResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -350,6 +365,17 @@ func (r *TestSuiteResource) evaluateTcpTests(ctx context.Context, tcpTests types
 
 	// For simplicity, we'll assume all tests pass
 	return len(testIds), len(testIds)
+}
+
+func addTestSuiteHardFailDiagnostic(diags *diag.Diagnostics, data *TestSuiteResourceModel) {
+	if !data.HardFail.ValueBool() || data.AllPassed.ValueBool() || data.TotalCount.ValueInt64() == 0 {
+		return
+	}
+	diags.AddError(
+		fmt.Sprintf("Test suite %q failed with hard_fail enabled", data.Name.ValueString()),
+		fmt.Sprintf("%d of %d tests failed in suite %q",
+			data.FailedCount.ValueInt64(), data.TotalCount.ValueInt64(), data.Name.ValueString()),
+	)
 }
 
 func (r *TestSuiteResource) evaluateDnsTests(ctx context.Context, dnsTests types.Set) (int, int) {

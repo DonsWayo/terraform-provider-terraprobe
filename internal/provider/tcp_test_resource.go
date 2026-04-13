@@ -6,9 +6,11 @@ import (
 	"net"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -37,6 +39,7 @@ type TcpTestResourceModel struct {
 	Timeout    types.Int64  `tfsdk:"timeout"`
 	Retries    types.Int64  `tfsdk:"retries"`
 	RetryDelay types.Int64  `tfsdk:"retry_delay"`
+	HardFail   types.Bool   `tfsdk:"hard_fail"`
 	Id         types.String `tfsdk:"id"`
 
 	// Results
@@ -84,6 +87,12 @@ func (r *TcpTestResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				Default:             int64default.StaticInt64(0), // 0 means use provider default
+			},
+			"hard_fail": schema.BoolAttribute{
+				MarkdownDescription: "If true, the resource returns an error (failing `terraform apply`) when the test does not pass after exhausting all retries. Defaults to false, which preserves the existing behaviour of recording the failure in `test_passed` and `error`.",
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(false),
 			},
 
 			// Results - these are computed values based on the last test run
@@ -163,6 +172,8 @@ func (r *TcpTestResource) Create(ctx context.Context, req resource.CreateRequest
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addTcpHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *TcpTestResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -187,6 +198,8 @@ func (r *TcpTestResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addTcpHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *TcpTestResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -211,6 +224,8 @@ func (r *TcpTestResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addTcpHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *TcpTestResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -294,4 +309,15 @@ func (r *TcpTestResource) runTest(_ context.Context, data *TcpTestResourceModel)
 	data.Error = types.StringValue("")
 
 	return nil
+}
+
+func addTcpHardFailDiagnostic(diags *diag.Diagnostics, data *TcpTestResourceModel) {
+	if !data.HardFail.ValueBool() || data.TestPassed.ValueBool() {
+		return
+	}
+	diags.AddError(
+		fmt.Sprintf("TCP test %q failed with hard_fail enabled", data.Name.ValueString()),
+		fmt.Sprintf("TCP test against %s:%d did not pass after all retries: %s",
+			data.Host.ValueString(), data.Port.ValueInt64(), data.Error.ValueString()),
+	)
 }

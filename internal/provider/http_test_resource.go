@@ -8,9 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -44,6 +46,7 @@ type HttpTestResourceModel struct {
 	RetryDelay       types.Int64  `tfsdk:"retry_delay"`
 	ExpectStatusCode types.Int64  `tfsdk:"expect_status_code"`
 	ExpectContains   types.String `tfsdk:"expect_contains"`
+	HardFail         types.Bool   `tfsdk:"hard_fail"`
 	Id               types.String `tfsdk:"id"`
 
 	// Results
@@ -114,6 +117,12 @@ func (r *HttpTestResource) Schema(ctx context.Context, req resource.SchemaReques
 			"expect_contains": schema.StringAttribute{
 				MarkdownDescription: "String to look for in the response body",
 				Optional:            true,
+			},
+			"hard_fail": schema.BoolAttribute{
+				MarkdownDescription: "If true, the resource returns an error (failing `terraform apply`) when the test does not pass after exhausting all retries. Defaults to false, which preserves the existing behaviour of recording the failure in `test_passed` and `error`.",
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(false),
 			},
 
 			// Results - these are computed values based on the last test run
@@ -201,6 +210,8 @@ func (r *HttpTestResource) Create(ctx context.Context, req resource.CreateReques
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addHttpHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *HttpTestResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -225,6 +236,8 @@ func (r *HttpTestResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addHttpHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *HttpTestResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -249,6 +262,8 @@ func (r *HttpTestResource) Update(ctx context.Context, req resource.UpdateReques
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	addHttpHardFailDiagnostic(&resp.Diagnostics, &data)
 }
 
 func (r *HttpTestResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -405,4 +420,15 @@ func (r *HttpTestResource) runTest(ctx context.Context, data *HttpTestResourceMo
 	}
 
 	return nil
+}
+
+func addHttpHardFailDiagnostic(diags *diag.Diagnostics, data *HttpTestResourceModel) {
+	if !data.HardFail.ValueBool() || data.TestPassed.ValueBool() {
+		return
+	}
+	diags.AddError(
+		fmt.Sprintf("HTTP test %q failed with hard_fail enabled", data.Name.ValueString()),
+		fmt.Sprintf("HTTP test against %s did not pass after all retries: %s",
+			data.URL.ValueString(), data.Error.ValueString()),
+	)
 }

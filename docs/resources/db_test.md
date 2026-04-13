@@ -27,6 +27,7 @@ Database test resource that validates database connectivity and queries
 
 ### Optional
 
+- `hard_fail` (Boolean) If true, the resource returns an error (failing `terraform apply`) when the test does not pass after exhausting all retries. Defaults to false, which preserves the existing behaviour of recording the failure in `test_passed` and `error`.
 - `max_idle_conn` (Number) Maximum number of idle connections
 - `max_lifetime` (Number) Maximum lifetime of a connection in seconds
 - `max_open_conn` (Number) Maximum number of open connections
