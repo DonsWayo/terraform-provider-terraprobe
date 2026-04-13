@@ -1,3 +1,17 @@
+## 0.3.1 (2026-04-13)
+
+DEPENDENCIES:
+
+* Bump `github.com/hashicorp/terraform-plugin-framework` from 1.16.1 to 1.19.0
+* Bump `github.com/hashicorp/terraform-plugin-go` from 0.29.0 to 0.31.0
+* Bump `github.com/hashicorp/terraform-plugin-log` from 0.9.0 to 0.10.0
+* Bump `github.com/hashicorp/terraform-plugin-testing` from 1.13.3 to 1.15.0
+* Bump `github.com/hashicorp/terraform-plugin-sdk/v2` from 2.38.1 to 2.40.0 (indirect)
+* Bump `github.com/lib/pq` from 1.10.9 to 1.12.3
+* Bump `github.com/hashicorp/copywrite` (tools) from 0.22.0 to 0.25.2
+* Bump `github.com/hashicorp/terraform-plugin-docs` (tools) from 0.21.0 to 0.24.0
+* Assorted `golang.org/x/*` and `google.golang.org/*` updates
+
 ## 0.3.0 (2026-04-13)
 
 FEATURES:
