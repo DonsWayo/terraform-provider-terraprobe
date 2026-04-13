@@ -1,3 +1,9 @@
+## 0.3.0 (2026-04-13)
+
+FEATURES:
+
+* Added `hard_fail` attribute to every test resource (`terraprobe_http_test`, `terraprobe_tcp_test`, `terraprobe_dns_test`, `terraprobe_db_test`, and `terraprobe_test_suite`). When set to `true`, the resource returns an error after exhausting all retries without passing, so `terraform apply` fails. Defaults to `false`, preserving prior behaviour. ([#27](https://github.com/DonsWayo/terraform-provider-terraprobe/issues/27), [#35](https://github.com/DonsWayo/terraform-provider-terraprobe/pull/35))
+
 ## 0.2.1 (2025-10-21)
 
 BUG FIXES:
