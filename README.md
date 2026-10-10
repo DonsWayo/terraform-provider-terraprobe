@@ -1,10 +1,10 @@
 # TerraProbe
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/DonsWayo/terraprobe?style=flat-square)](https://golang.org/doc/go1.25)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/DonsWayo/terraform-provider-terraprobe?style=flat-square)](https://golang.org/doc/go1.25)
 [![Terraform Registry](https://img.shields.io/badge/registry-terraform.io-blue?style=flat-square)](https://registry.terraform.io/namespaces/DonsWayo)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg?style=flat-square)](https://opensource.org/licenses/MPL-2.0)
-[![Go Report Card](https://goreportcard.com/badge/github.com/DonsWayo/terraprobe?style=flat-square)](https://goreportcard.com/report/github.com/DonsWayo/terraprobe)
-[![GitHub release](https://img.shields.io/github/v/release/DonsWayo/terraprobe?style=flat-square)](https://github.com/DonsWayo/terraprobe/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/DonsWayo/terraform-provider-terraprobe?style=flat-square)](https://goreportcard.com/report/github.com/DonsWayo/terraform-provider-terraprobe)
+[![GitHub release](https://img.shields.io/github/v/release/DonsWayo/terraform-provider-terraprobe?style=flat-square)](https://github.com/DonsWayo/terraform-provider-terraprobe/releases)
 
 Infrastructure testing Terraform provider that validates your deployed resources are functioning correctly.
 
@@ -20,6 +20,7 @@ TerraProbe lets you write infrastructure tests directly in Terraform. After depl
 - **Database Testing**: Test PostgreSQL and MySQL connectivity and run validation queries
 - **Test Suites**: Group related tests and get aggregated results
 - **Retry Logic**: Built-in retry mechanisms for handling transient failures
+- **Hard Failure Mode**: Set `hard_fail = true` on any test resource to fail `terraform apply` when the test still has not passed after all retries (defaults to `false`, recording the outcome in `test_passed` and `error` instead)
 
 ## Installation
 
@@ -30,7 +31,7 @@ terraform {
   required_providers {
     terraprobe = {
       source  = "DonsWayo/terraprobe"
-      version = "~> 0.1"
+      version = "~> 0.3"
     }
   }
 }
@@ -45,7 +46,7 @@ provider "terraprobe" {
 ### Building from Source
 
 ```bash
-git clone https://github.com/DonsWayo/terraprobe.git
+git clone https://github.com/DonsWayo/terraform-provider-terraprobe.git
 cd terraprobe
 
 # Using Task (recommended)
@@ -320,10 +321,8 @@ We use conventional commits:
 
 ## License
 
-This project is licensed under the Mozilla Public License 2.0 - Copyright (c) 2025 Juan Jose Caracedo - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Mozilla Public License 2.0 - Copyright (c) 2025 Juan Jose Carracedo - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- [Issues](https://github.com/DonsWayo/terraprobe/issues)
-- [Discussions](https://github.com/DonsWayo/terraprobe/discussions)
-- [Wiki](https://github.com/DonsWayo/terraprobe/wiki)
+- [Issues](https://github.com/DonsWayo/terraform-provider-terraprobe/issues)
