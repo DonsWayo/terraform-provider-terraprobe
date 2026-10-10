@@ -42,6 +42,13 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+      # tfplugindocs needs a Terraform CLI on PATH. Without one it downloads
+      # its own, and hc-install's embedded keyring rejects the download with
+      # "openpgp: key expired".
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: '1.13.*'
+          terraform_wrapper: false
       - name: Install Task
         run: |
           sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
