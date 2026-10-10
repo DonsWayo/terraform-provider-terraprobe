@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -268,8 +269,9 @@ func (r *TcpTestResource) runTest(_ context.Context, data *TcpTestResourceModel)
 		retryDelay = time.Duration(data.RetryDelay.ValueInt64()) * time.Second
 	}
 
-	// Format the address
-	address := fmt.Sprintf("%s:%d", data.Host.ValueString(), data.Port.ValueInt64())
+	// Format the address. JoinHostPort brackets IPv6 literal hosts, which
+	// a plain host:port format cannot represent.
+	address := net.JoinHostPort(data.Host.ValueString(), strconv.Itoa(int(data.Port.ValueInt64())))
 
 	// Perform the connection attempt with retries
 	var err error

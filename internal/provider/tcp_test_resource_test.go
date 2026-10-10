@@ -88,6 +88,53 @@ func TestTcpTestResource_runTest(t *testing.T) {
 	}
 }
 
+// TestTcpTestResource_runTest_ipv6 verifies that an IPv6 literal host is
+// bracketed correctly when dialling; a plain host:port format is ambiguous
+// for IPv6.
+func TestTcpTestResource_runTest_ipv6(t *testing.T) {
+	listener, err := net.Listen("tcp", "[::1]:0")
+	if err != nil {
+		t.Skipf("failed to listen on IPv6 loopback: %v", err)
+	}
+	defer func() { _ = listener.Close() }()
+
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			_ = conn.Close()
+		}
+	}()
+
+	host, portStr, _ := net.SplitHostPort(listener.Addr().String())
+	port, _ := strconv.ParseInt(portStr, 10, 64)
+
+	resource := &TcpTestResource{
+		clientConfig: &TerraProbeClientConfig{
+			HttpClient: &http.Client{Timeout: 5 * time.Second},
+			UserAgent:  "TerraProbe-Test",
+			Retries:    1,
+			RetryDelay: time.Second,
+		},
+	}
+
+	model := &TcpTestResourceModel{
+		Name: types.StringValue("Test TCP IPv6"),
+		Host: types.StringValue(host),
+		Port: types.Int64Value(port),
+	}
+
+	if err := resource.runTest(context.Background(), model); err != nil {
+		t.Fatalf("runTest failed: %v", err)
+	}
+
+	if !model.TestPassed.ValueBool() {
+		t.Errorf("Expected TCP test against [::1] to pass, but it failed with error: %s", model.Error.ValueString())
+	}
+}
+
 // TestTcpHardFailDiagnostic verifies that hard_fail only adds an error when
 // the test did not pass.
 func TestTcpHardFailDiagnostic(t *testing.T) {
