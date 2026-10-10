@@ -40,3 +40,4 @@ website/vendor
 
 # Provider binary
 terraform-provider-terraprobe
+coverage.out
